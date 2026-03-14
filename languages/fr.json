@@ -33,7 +33,8 @@
 
       "exitEffectChoices": {
         "current": "Animation par défaut",
-        "iceShatter": "Gel puis casse"
+        "iceShatter": "Gel puis casse",
+        "fireBurn": "Se consume dans les flammes"
       }
     },
 

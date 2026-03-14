@@ -14,7 +14,8 @@ const BANNER_SLOTS = [
 
 const EXIT_EFFECTS = {
   CURRENT: "current",
-  ICE_SHATTER: "iceShatter"
+  ICE_SHATTER: "iceShatter",
+  FIRE_BURN: "fireBurn"
 };
 
 const EXIT_TIMINGS = {
@@ -28,6 +29,13 @@ const EXIT_TIMINGS = {
     crackDuration: 220,
     shatterDuration: 820,
     totalDuration: 1650
+  },
+  fireBurn: {
+    startDelay: 3000,
+    igniteDuration: 260,
+    burnDuration: 820,
+    emberDuration: 520,
+    totalDuration: 1750
   }
 };
 
@@ -137,7 +145,8 @@ function registerSettings() {
     type: String,
     choices: {
       [EXIT_EFFECTS.CURRENT]: game.i18n.localize("CRITICAL_RUBAN.settings.exitEffectChoices.current"),
-      [EXIT_EFFECTS.ICE_SHATTER]: game.i18n.localize("CRITICAL_RUBAN.settings.exitEffectChoices.iceShatter")
+      [EXIT_EFFECTS.ICE_SHATTER]: game.i18n.localize("CRITICAL_RUBAN.settings.exitEffectChoices.iceShatter"),
+      [EXIT_EFFECTS.FIRE_BURN]: game.i18n.localize("CRITICAL_RUBAN.settings.exitEffectChoices.fireBurn")
     },
     default: EXIT_EFFECTS.CURRENT
   });
@@ -297,6 +306,9 @@ const mainExtraClass = [
           <div class="crit-shine"></div>
           <div class="crit-frost-overlay" aria-hidden="true"></div>
           <div class="crit-crack-overlay" aria-hidden="true"></div>
+          <div class="crit-fire-overlay" aria-hidden="true"></div>
+          <div class="crit-burn-overlay" aria-hidden="true"></div>
+          <div class="crit-heat-overlay" aria-hidden="true"></div>
           ${iconHTML}
           <span class="crit-text">${label} : ${nom_pj}</span>
         </div>
@@ -344,7 +356,7 @@ function getExitEffect(type) {
 }
 
 function scheduleRubanExit(div, wrap, type) {
-  /*const effect = getExitEffect(type);
+  const effect = getExitEffect(type);
   const timings = EXIT_TIMINGS[effect] ?? EXIT_TIMINGS.current;
   const slotIndex = Number(div.dataset.slotIndex);
 
@@ -355,12 +367,17 @@ function scheduleRubanExit(div, wrap, type) {
   setTimeout(() => {
     releaseBannerSlot(slotIndex);
     div.remove();
-  }, timings.startDelay + timings.totalDuration + 180);*/
+  }, timings.startDelay + timings.totalDuration + 180);
 }
 
 function playExitEffect(div, wrap, type, effect) {
   if (effect === EXIT_EFFECTS.ICE_SHATTER && type === "fumble") {
     playIceShatterExit(div, wrap);
+    return;
+  }
+
+  if (effect === EXIT_EFFECTS.FIRE_BURN) {
+    playFireBurnExit(div, wrap);
     return;
   }
 
@@ -394,6 +411,43 @@ function playIceShatterExit(div, wrap) {
     tails.forEach((el) => el.classList.add("ice-fade-out"));
     folds.forEach((el) => el.classList.add("ice-fade-out"));
   }, timings.freezeDuration + timings.crackDuration);
+}
+
+function playFireBurnExit(div, wrap) {
+  const timings = EXIT_TIMINGS.fireBurn;
+
+  const main = wrap.querySelector(".crit-main");
+  const tails = [...wrap.querySelectorAll(".crit-tail")];
+  const folds = [...wrap.querySelectorAll(".crit-fold-under")];
+
+  wrap.classList.remove("crit-enter");
+  wrap.classList.add("crit-exit-fire");
+
+  main.classList.add("fire-igniting");
+  tails.forEach(el => el.classList.add("fire-igniting"));
+  folds.forEach(el => el.classList.add("fire-igniting"));
+
+  setTimeout(() => {
+    wrap.classList.add("fire-burning");
+
+    main.classList.add("fire-burning");
+    tails.forEach(el => el.classList.add("fire-burning"));
+    folds.forEach(el => el.classList.add("fire-burning"));
+
+    createEmberParticles(div, 18, timings.emberDuration);
+  }, timings.igniteDuration);
+
+  setTimeout(() => {
+    main.classList.add("fire-charring");
+    tails.forEach(el => el.classList.add("fire-charring"));
+    folds.forEach(el => el.classList.add("fire-charring"));
+  }, timings.igniteDuration + 180);
+
+  setTimeout(() => {
+    main.classList.add("fire-hidden");
+    tails.forEach(el => el.classList.add("fire-hidden"));
+    folds.forEach(el => el.classList.add("fire-hidden"));
+  }, timings.igniteDuration + timings.burnDuration);
 }
 
 function shatterMainBanner(container, mainWrap, main, { shatterDuration = 700 } = {}) {
@@ -610,4 +664,23 @@ function releaseBannerSlot(slotIndex) {
 
 function getBannerSlotStyle(slotIndex) {
   return BANNER_SLOTS[slotIndex] ?? BANNER_SLOTS[0];
+}
+
+function createEmberParticles(container, count, duration) {
+  const width = container.offsetWidth;
+  const height = container.offsetHeight;
+
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement("div");
+    p.className = "crit-ember-particle";
+
+    p.style.left = `${randomBetween(width * 0.18, width * 0.82)}px`;
+    p.style.top = `${randomBetween(height * 0.45, height * 0.92)}px`;
+    p.style.setProperty("--drift-x", `${randomBetween(-55, 55)}px`);
+    p.style.setProperty("--drift-y", `${randomBetween(35, 120)}px`);
+    p.style.setProperty("--ember-scale", `${randomBetween(0.7, 1.35).toFixed(2)}`);
+    p.style.animationDuration = `${duration + randomBetween(-80, 120)}ms`;
+
+    container.appendChild(p);
+  }
 }

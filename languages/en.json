@@ -33,7 +33,8 @@
 
       "exitEffectChoices": {
         "current": "Default animation",
-        "iceShatter": "Freeze and shatter"
+        "iceShatter": "Freeze and shatter",
+        "fireBurn": "Burn away"
       }
     },
 
