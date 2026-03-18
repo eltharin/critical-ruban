@@ -184,12 +184,75 @@ class CritBanner {
 
   drawBody() {
     const g = new PIXI.Graphics();
+
     const x = -this.mainWidth / 2;
     const y = -this.height / 2;
-    const r = 16;
+    const w = this.mainWidth;
+    const h = this.height;
 
-    gRoundRect(g, x, y, this.mainWidth, this.height, r, this.darkColor, 1, 3, this.accentColor, 0.95);
-    gRoundRect(g, x + 4, y + 4, this.mainWidth - 8, this.height - 8, Math.max(10, r - 4), this.mainColor, 1);
+    const topInset = 18;
+    const sideBulge = 10;
+    const lowerDip = 8;
+
+    // contour extérieur doré / sombre
+    g.lineStyle(3, this.accentColor, 0.95);
+    g.beginFill(this.darkColor, 1);
+
+    g.moveTo(x + topInset, y);
+    g.bezierCurveTo(
+      x - sideBulge, y + h * 0.10,
+      x - sideBulge, y + h * 0.90,
+      x + topInset, y + h
+    );
+
+    g.lineTo(x + w - topInset, y + h);
+
+    g.bezierCurveTo(
+      x + w + sideBulge, y + h * 0.90,
+      x + w + sideBulge, y + h * 0.10,
+      x + w - topInset, y
+    );
+
+    g.bezierCurveTo(
+      x + w * 0.72, y + lowerDip,
+      x + w * 0.28, y + lowerDip,
+      x + topInset, y
+    );
+
+    g.endFill();
+
+    // corps principal
+    g.beginFill(this.mainColor, 1);
+
+    const ix = x + 4;
+    const iy = y + 4;
+    const iw = w - 8;
+    const ih = h - 8;
+    const iTopInset = 14;
+
+    g.moveTo(ix + iTopInset, iy);
+
+    g.bezierCurveTo(
+      ix - 4, iy + ih * 0.12,
+      ix - 4, iy + ih * 0.88,
+      ix + iTopInset, iy + ih
+    );
+
+    g.lineTo(ix + iw - iTopInset, iy + ih);
+
+    g.bezierCurveTo(
+      ix + iw + 4, iy + ih * 0.88,
+      ix + iw + 4, iy + ih * 0.12,
+      ix + iw - iTopInset, iy
+    );
+
+    g.bezierCurveTo(
+      ix + iw * 0.72, iy + 6,
+      ix + iw * 0.28, iy + 6,
+      ix + iTopInset, iy
+    );
+
+    g.endFill();
 
     return g;
   }
@@ -221,12 +284,107 @@ class CritBanner {
   drawTail(isLeft) {
     const g = new PIXI.Graphics();
     const sign = isLeft ? -1 : 1;
-    const halfH = this.height * 0.38;
-    gPoly(g, [0, -halfH, sign * this.tailWidth, -halfH + 10, sign * (this.tailWidth - 18), 0, sign * this.tailWidth, halfH - 10, 0, halfH], this.darkColor, 1, 3, this.accentColor, 0.9);
 
+    const h = this.height * 0.76;
+    const halfH = h / 2;
+    const w = this.tailWidth + 18;
+
+    // forme principale de la queue
+    g.lineStyle(3, this.accentColor, 0.9);
+    g.beginFill(this.darkColor, 1);
+
+    g.moveTo(0, -halfH);
+
+    g.bezierCurveTo(
+      sign * (w * 0.20), -halfH - 3,
+      sign * (w * 0.72), -halfH + 2,
+      sign * w, -halfH + 12
+    );
+
+    g.lineTo(sign * (w - 16), 0);
+
+    g.lineTo(sign * w, halfH - 12);
+
+    g.bezierCurveTo(
+      sign * (w * 0.72), halfH - 2,
+      sign * (w * 0.20), halfH + 3,
+      0, halfH
+    );
+
+    g.bezierCurveTo(
+      sign * 10, halfH * 0.38,
+      sign * 10, -halfH * 0.38,
+      0, -halfH
+    );
+
+    g.endFill();
+
+    // remplissage principal interne
+    g.beginFill(this.mainColor, 1);
+
+    g.moveTo(sign * 4, -halfH + 4);
+
+    g.bezierCurveTo(
+      sign * (w * 0.18), -halfH,
+      sign * (w * 0.66), -halfH + 6,
+      sign * (w - 8), -halfH + 14
+    );
+
+    g.lineTo(sign * (w - 22), 0);
+    g.lineTo(sign * (w - 8), halfH - 14);
+
+    g.bezierCurveTo(
+      sign * (w * 0.66), halfH - 6,
+      sign * (w * 0.18), halfH,
+      sign * 4, halfH - 4
+    );
+
+    g.bezierCurveTo(
+      sign * 12, halfH * 0.30,
+      sign * 12, -halfH * 0.30,
+      sign * 4, -halfH + 4
+    );
+
+    g.endFill();
+
+    // pli intérieur
     const fold = new PIXI.Graphics();
-    gPoly(fold, [sign * 12, 0, sign * (this.tailWidth - 14), -12, sign * (this.tailWidth - 22), 12], this.darkerColor, 0.9);
+    fold.beginFill(this.darkerColor, 0.85);
+
+    fold.moveTo(sign * 10, 0);
+    fold.bezierCurveTo(
+      sign * 18, -10,
+      sign * 28, -8,
+      sign * 38, 0
+    );
+    fold.bezierCurveTo(
+      sign * 28, 8,
+      sign * 18, 10,
+      sign * 10, 0
+    );
+
+    fold.endFill();
     g.addChild(fold);
+
+    // reflet doux haut
+    const gloss = new PIXI.Graphics();
+    gloss.beginFill(COLORS.white, 0.10);
+
+    gloss.moveTo(sign * 8, -halfH + 10);
+    gloss.bezierCurveTo(
+      sign * 24, -halfH + 4,
+      sign * (w * 0.42), -halfH + 6,
+      sign * (w * 0.62), -halfH + 16
+    );
+    gloss.bezierCurveTo(
+      sign * (w * 0.36), -halfH + 14,
+      sign * 22, -halfH + 16,
+      sign * 8, -halfH + 20
+    );
+
+    gloss.endFill();
+    g.addChild(gloss);
+
     return g;
   }
 
