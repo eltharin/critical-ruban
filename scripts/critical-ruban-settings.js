@@ -56,9 +56,7 @@ function registerSettings() {
     config: true,
     type: String,
     choices: {
-      [EXIT_EFFECTS.CURRENT]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.current"),
-      [EXIT_EFFECTS.FROZEN_GLORY]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.frozenGlory"),
-      [EXIT_EFFECTS.BLAZING_GLORY]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.blazingGlory")
+      [EXIT_EFFECTS.CURRENT]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.current")
     },
     default: EXIT_EFFECTS.CURRENT
   });
@@ -70,9 +68,7 @@ function registerSettings() {
     config: true,
     type: String,
     choices: {
-      [EXIT_EFFECTS.CURRENT]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.current"),
-      [EXIT_EFFECTS.ICE_SHATTER]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.iceShatter"),
-      [EXIT_EFFECTS.FIRE_BURN]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.fireBurn")
+      [EXIT_EFFECTS.CURRENT]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.current")
     },
     default: EXIT_EFFECTS.CURRENT
   });

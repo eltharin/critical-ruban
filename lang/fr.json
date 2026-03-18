@@ -32,11 +32,7 @@
       },
 
       "exitEffectChoices": {
-        "current": "Animation par défaut",
-        "iceShatter": "Gel puis casse",
-        "fireBurn": "Se consume dans les flammes",
-        "frozenGlory": "Gloire gelée",
-        "blazingGlory": "Flamboiement glorieux"
+        "current": "Animation par défaut"
       }
     },
 

@@ -10,19 +10,11 @@ const BANNER_SLOTS = [
 ];
 
 const EXIT_EFFECTS = {
-  CURRENT: "current",
-  ICE_SHATTER: "iceShatter",
-  FIRE_BURN: "fireBurn",
-  FROZEN_GLORY: "frozenGlory",
-  BLAZING_GLORY: "blazingGlory"
+  CURRENT: "current"
 };
 
 const EXIT_TIMINGS = {
-  current: { startDelay: 3000, totalDuration: 900 },
-  iceShatter: { startDelay: 3000, totalDuration: 1150 },
-  fireBurn: { startDelay: 3000, totalDuration: 1200 },
-  frozenGlory: { startDelay: 3000, totalDuration: 1100 },
-  blazingGlory: { startDelay: 3000, totalDuration: 1000 }
+  current: { startDelay: 3000, totalDuration: 900 }
 };
 
 const COLORS = {

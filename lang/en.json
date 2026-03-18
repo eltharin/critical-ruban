@@ -11,11 +11,7 @@
         "self": "Each user only for their own rolls"
       },
       "exitEffect": {
-        "current": "Default",
-        "frozenGlory": "Frozen Glory",
-        "blazingGlory": "Blazing Glory",
-        "iceShatter": "Ice Shatter",
-        "fireBurn": "Fire Burn"
+        "current": "Default"
       }
     },
     "settings": {

@@ -289,43 +289,42 @@ class CritBanner {
     const halfH = h / 2;
     const w = this.tailWidth + 18;
 
-    // forme principale de la queue
+    // forme externe
     g.lineStyle(3, this.accentColor, 0.9);
     g.beginFill(this.darkColor, 1);
 
     g.moveTo(0, -halfH);
 
     g.bezierCurveTo(
-      sign * (w * 0.20), -halfH - 3,
+      sign * (w * 0.20), -halfH - 2,
       sign * (w * 0.72), -halfH + 2,
       sign * w, -halfH + 12
     );
 
     g.lineTo(sign * (w - 16), 0);
-
     g.lineTo(sign * w, halfH - 12);
 
     g.bezierCurveTo(
       sign * (w * 0.72), halfH - 2,
-      sign * (w * 0.20), halfH + 3,
+      sign * (w * 0.20), halfH + 2,
       0, halfH
     );
 
     g.bezierCurveTo(
-      sign * 10, halfH * 0.38,
-      sign * 10, -halfH * 0.38,
+      sign * 10, halfH * 0.40,
+      sign * 10, -halfH * 0.40,
       0, -halfH
     );
 
     g.endFill();
 
-    // remplissage principal interne
+    // remplissage interne
     g.beginFill(this.mainColor, 1);
 
     g.moveTo(sign * 4, -halfH + 4);
 
     g.bezierCurveTo(
-      sign * (w * 0.18), -halfH,
+      sign * (w * 0.18), -halfH + 1,
       sign * (w * 0.66), -halfH + 6,
       sign * (w - 8), -halfH + 14
     );
@@ -335,32 +334,37 @@ class CritBanner {
 
     g.bezierCurveTo(
       sign * (w * 0.66), halfH - 6,
-      sign * (w * 0.18), halfH,
+      sign * (w * 0.18), halfH - 1,
       sign * 4, halfH - 4
     );
 
     g.bezierCurveTo(
-      sign * 12, halfH * 0.30,
-      sign * 12, -halfH * 0.30,
+      sign * 12, halfH * 0.32,
+      sign * 12, -halfH * 0.32,
       sign * 4, -halfH + 4
     );
 
     g.endFill();
 
-    // pli intérieur
+    // pli intérieur plus naturel
     const fold = new PIXI.Graphics();
-    fold.beginFill(this.darkerColor, 0.85);
+    fold.beginFill(this.darkerColor, 0.42);
 
-    fold.moveTo(sign * 10, 0);
+    fold.moveTo(sign * 8, -halfH * 0.16);
     fold.bezierCurveTo(
-      sign * 18, -10,
-      sign * 28, -8,
-      sign * 38, 0
+      sign * 18, -halfH * 0.10,
+      sign * 30, -halfH * 0.05,
+      sign * 42, 0
     );
     fold.bezierCurveTo(
-      sign * 28, 8,
-      sign * 18, 10,
-      sign * 10, 0
+      sign * 30, halfH * 0.05,
+      sign * 18, halfH * 0.10,
+      sign * 8, halfH * 0.16
+    );
+    fold.bezierCurveTo(
+      sign * 14, halfH * 0.08,
+      sign * 14, -halfH * 0.08,
+      sign * 8, -halfH * 0.16
     );
 
     fold.endFill();
@@ -368,7 +372,7 @@ class CritBanner {
 
     // reflet doux haut
     const gloss = new PIXI.Graphics();
-    gloss.beginFill(COLORS.white, 0.10);
+    gloss.beginFill(COLORS.white, 0.08);
 
     gloss.moveTo(sign * 8, -halfH + 10);
     gloss.bezierCurveTo(
@@ -390,33 +394,35 @@ class CritBanner {
 
   drawBadge() {
     const c = new PIXI.Container();
-    const bg = new PIXI.Graphics();
-    gCircle(bg, this.badgeSize / 2, this.badgeSize / 2, this.badgeSize / 2, this.isFumble ? 0x55201d : 0x5b4417, 1, 3, this.accentBright, 1);
 
-    const ring = new PIXI.Graphics();
-    gCircle(ring, this.badgeSize / 2, this.badgeSize / 2, this.badgeSize / 2 - 8, null, 1, 2, COLORS.white, 0.25);
+    const iconPath = this.isFumble
+      ? `modules/${MODULE_ID}/assets/fumble.svg`
+      : "icons/svg/d20.svg";
 
-    const style = {
-      fontFamily: "Signika, serif",
-      fontSize: this.isFumble ? 34 : 28,
-      fontWeight: "900",
-      fill: this.accentBright,
-      stroke: 0x1c1308,
-      strokeThickness: 3,
-      lineJoin: "round"
+    const icon = PIXI.Sprite.from(iconPath);
+    icon.anchor.set(0.5);
+    icon.x = this.badgeSize / 2;
+    icon.y = this.badgeSize / 2;
+    icon.tint = 0xffffff;
+
+    const fitIcon = () => {
+      const maxW = 60;
+      const maxH = 60;
+
+      const tw = icon.texture?.width || 1;
+      const th = icon.texture?.height || 1;
+      const scale = Math.min(maxW / tw, maxH / th);
+
+      icon.scale.set(scale);
     };
-    const TextCtor = foundry?.canvas?.containers?.PreciseText ?? PIXI.Text;
-    const text = new TextCtor(this.isFumble ? "!" : "20", style);
-    text.anchor?.set?.(0.5) ?? null;
-    if (!text.anchor) {
-      text.x = (this.badgeSize - text.width) / 2;
-      text.y = (this.badgeSize - text.height) / 2;
+
+    if (icon.texture?.baseTexture?.valid) {
+      fitIcon();
     } else {
-      text.x = this.badgeSize / 2;
-      text.y = this.badgeSize / 2;
+      icon.texture.baseTexture.once("loaded", fitIcon);
     }
 
-    c.addChild(bg, ring, text);
+    c.addChild(icon);
     return c;
   }
 
@@ -496,19 +502,7 @@ class CritBanner {
   }
 
   prepareExit() {
-    if (this.exitEffect === EXIT_EFFECTS.ICE_SHATTER) {
-      this.spawnIceShards();
-      this.frostLines.alpha = 0.75;
-    } else if (this.exitEffect === EXIT_EFFECTS.FIRE_BURN) {
-      this.spawnEmbers(20);
-      this.flare.alpha = 0.28;
-    } else if (this.exitEffect === EXIT_EFFECTS.FROZEN_GLORY) {
-      this.spawnColdMotes(18);
-      this.frostLines.alpha = 0.8;
-    } else if (this.exitEffect === EXIT_EFFECTS.BLAZING_GLORY) {
-      this.spawnGoldenSparks(18);
-      this.flare.alpha = 0.38;
-    }
+    
   }
 
   updateEnter() {
@@ -552,18 +546,6 @@ class CritBanner {
   updateExit() {
     const t = clamp01(this.stateTime / this.exitDuration);
     switch (this.exitEffect) {
-      case EXIT_EFFECTS.ICE_SHATTER:
-        this.updateIceShatter(t);
-        break;
-      case EXIT_EFFECTS.FIRE_BURN:
-        this.updateFireBurn(t);
-        break;
-      case EXIT_EFFECTS.FROZEN_GLORY:
-        this.updateFrozenGlory(t);
-        break;
-      case EXIT_EFFECTS.BLAZING_GLORY:
-        this.updateBlazingGlory(t);
-        break;
       default:
         this.updateCurrentExit(t);
         break;
@@ -580,156 +562,12 @@ class CritBanner {
     this.shine.alpha = lerp(this.shine.alpha, 0, 0.3);
   }
 
-  updateIceShatter(t) {
-    const freezeT = clamp01(t / 0.35);
-    const shatterT = clamp01((t - 0.26) / 0.74);
-    this.root.alpha = 1 - easeInQuad(clamp01((t - 0.45) / 0.55));
-    this.root.position.set(this.baseX + Math.sin(t * 34) * (1 - t) * 3.5, this.baseY);
-    this.motion.scale.set(this.baseScale * lerp(1, 1.02, freezeT));
-    this.frostLines.alpha = 0.25 + Math.sin(freezeT * Math.PI) * 0.55;
-    this.innerGlow.alpha = lerp(0.55, 0.18, shatterT);
-    this.shine.alpha = 0;
-
-    if (t > 0.28) {
-      this.bodyGroup.alpha = lerp(1, 0.08, shatterT);
-      for (const shard of this.shards) {
-        shard.sprite.alpha = 1 - shatterT;
-        shard.sprite.x = shard.ox + shard.vx * easeOutCubic(shatterT);
-        shard.sprite.y = shard.oy + shard.vy * easeOutCubic(shatterT);
-        shard.sprite.rotation = shard.vr * easeOutCubic(shatterT);
-      }
-    }
-  }
-
-  updateFireBurn(t) {
-    const burn = easeInOutQuad(t);
-    this.root.alpha = 1 - easeInQuad(clamp01((t - 0.52) / 0.48));
-    this.root.position.set(this.baseX + Math.sin(t * 22) * (1 - t) * 5, this.baseY - lerp(0, 20, burn));
-    this.motion.scale.set(this.baseScale * lerp(1, 1.03, burn));
-    this.motion.rotation = this.baseRotation + Math.sin(t * 16) * 0.01 * (1 - t);
-    this.flare.alpha = 0.15 + Math.sin(t * Math.PI) * 0.30;
-    this.innerGlow.alpha = lerp(0.5, 0.1, burn);
-    this.shine.alpha = 0;
-    this.bodyGroup.tint = mixHex(COLORS.white, 0x3b2219, clamp01((t - 0.18) / 0.82));
-
-    if (Math.random() < 0.28) this.spawnEmbers(1);
-  }
-
-  updateFrozenGlory(t) {
-    const e = easeInOutCubic(t);
-    this.root.alpha = 1 - easeInQuad(clamp01((t - 0.52) / 0.48));
-    this.root.position.set(this.baseX, this.baseY - lerp(0, 14, e));
-    this.motion.scale.set(this.baseScale * lerp(1, 1.025, e));
-    this.frostLines.alpha = 0.4 + Math.sin(t * Math.PI) * 0.5;
-    this.innerGlow.alpha = 0.35 + Math.sin(t * Math.PI) * 0.18;
-    this.shine.alpha = 0.08;
-    this.shine.x = 0;
-    this.bodyGroup.tint = mixHex(COLORS.white, 0xcfefff, clamp01((t - 0.08) / 0.55));
-  }
-
-  updateBlazingGlory(t) {
-    const e = easeOutCubic(t);
-    this.root.alpha = 1 - easeInQuad(clamp01((t - 0.55) / 0.45));
-    this.root.position.set(this.baseX, this.baseY - lerp(0, 18, e));
-    this.motion.scale.set(this.baseScale * lerp(1, 1.045, Math.sin(t * Math.PI)));
-    this.flare.alpha = 0.2 + Math.sin(t * Math.PI) * 0.36;
-    this.innerGlow.alpha = 0.48 + Math.sin(t * Math.PI) * 0.14;
-    this.shine.alpha = 0.1 + Math.sin(t * Math.PI) * 0.16;
-    this.shine.x = lerp(-34, 34, t);
-    if (Math.random() < 0.25) this.spawnGoldenSparks(1);
-  }
 
   updateCommonFX(t, entering = false) {
     this.innerGlow.alpha = lerp(0.2, 0.55, t);
     if (entering) {
       this.shine.alpha = Math.sin(t * Math.PI) * 0.18;
       this.shine.x = lerp(-50, 14, t);
-    }
-  }
-
-  spawnIceShards() {
-    if (this.shards.length) return;
-    const parts = [
-      { x: -this.mainWidth * 0.27, y: 0, w: this.mainWidth * 0.26, h: this.height * 0.74, vx: -90, vy: -18, vr: -0.28 },
-      { x: 0, y: -8, w: this.mainWidth * 0.30, h: this.height * 0.82, vx: 0, vy: -36, vr: 0.16 },
-      { x: this.mainWidth * 0.28, y: 4, w: this.mainWidth * 0.24, h: this.height * 0.70, vx: 96, vy: 18, vr: 0.24 },
-      { x: -this.mainWidth * 0.08, y: this.height * 0.16, w: this.mainWidth * 0.18, h: this.height * 0.30, vx: -36, vy: 74, vr: -0.22 },
-      { x: this.mainWidth * 0.14, y: this.height * 0.12, w: this.mainWidth * 0.16, h: this.height * 0.26, vx: 42, vy: 82, vr: 0.20 }
-    ];
-
-    for (const p of parts) {
-      const sprite = new PIXI.Graphics();
-      gRoundRect(sprite, -p.w / 2, -p.h / 2, p.w, p.h, 10, mixHex(this.mainColor, 0xdaf5ff, 0.35), 0.95, 2, COLORS.iceBright, 0.95);
-      sprite.x = p.x;
-      sprite.y = p.y;
-      this.fx.addChild(sprite);
-      this.shards.push({ sprite, ox: p.x, oy: p.y, vx: p.vx, vy: p.vy, vr: p.vr });
-    }
-  }
-
-  spawnEmbers(count) {
-    for (let i = 0; i < count; i++) {
-      const p = new PIXI.Graphics();
-      const size = randomBetween(2, 5);
-      gCircle(p, 0, 0, size, Math.random() < 0.45 ? COLORS.ember : COLORS.redBright, 0.95);
-      p.x = randomBetween(-this.mainWidth * 0.42, this.mainWidth * 0.42);
-      p.y = randomBetween(-this.height * 0.2, this.height * 0.3);
-      this.fx.addChild(p);
-      this.particles.push({
-        sprite: p,
-        life: randomBetween(500, 900),
-        age: 0,
-        vx: randomBetween(-18, 18),
-        vy: randomBetween(-68, -36),
-        vr: randomBetween(-0.05, 0.05),
-        startAlpha: 0.9,
-        scaleFrom: 1,
-        scaleTo: 0.4
-      });
-    }
-  }
-
-  spawnColdMotes(count) {
-    for (let i = 0; i < count; i++) {
-      const p = new PIXI.Graphics();
-      const size = randomBetween(2, 4);
-      gCircle(p, 0, 0, size, Math.random() < 0.5 ? COLORS.ice : COLORS.iceBright, 0.95);
-      p.x = randomBetween(-this.mainWidth * 0.45, this.mainWidth * 0.45);
-      p.y = randomBetween(-this.height * 0.35, this.height * 0.35);
-      this.fx.addChild(p);
-      this.particles.push({
-        sprite: p,
-        life: randomBetween(650, 1000),
-        age: 0,
-        vx: randomBetween(-25, 25),
-        vy: randomBetween(-28, 18),
-        vr: randomBetween(-0.04, 0.04),
-        startAlpha: 0.85,
-        scaleFrom: 1,
-        scaleTo: 0.3
-      });
-    }
-  }
-
-  spawnGoldenSparks(count) {
-    for (let i = 0; i < count; i++) {
-      const p = new PIXI.Graphics();
-      const size = randomBetween(2, 5);
-      gStar(p, 0, 0, 4, size, Math.max(1, size * 0.42), Math.random() < 0.55 ? COLORS.goldBright : COLORS.ember, 0.95);
-      p.x = randomBetween(-this.mainWidth * 0.38, this.mainWidth * 0.38);
-      p.y = randomBetween(-this.height * 0.28, this.height * 0.28);
-      this.fx.addChild(p);
-      this.particles.push({
-        sprite: p,
-        life: randomBetween(480, 820),
-        age: 0,
-        vx: randomBetween(-45, 45),
-        vy: randomBetween(-52, 8),
-        vr: randomBetween(-0.09, 0.09),
-        startAlpha: 0.95,
-        scaleFrom: 1,
-        scaleTo: 0.45
-      });
     }
   }
 
