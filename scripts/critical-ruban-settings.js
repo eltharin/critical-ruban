@@ -55,9 +55,7 @@ function registerSettings() {
     scope: "client",
     config: true,
     type: String,
-    choices: {
-      [EXIT_EFFECTS.CURRENT]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.current")
-    },
+    choices: getExitEffectChoices("critical"),
     default: EXIT_EFFECTS.CURRENT
   });
 
@@ -67,10 +65,7 @@ function registerSettings() {
     scope: "client",
     config: true,
     type: String,
-    choices: {
-      [EXIT_EFFECTS.CURRENT]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.current"),
-      [EXIT_EFFECTS.FROZEN_SHATTER]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.frozenShatter")
-    },
+    choices: getExitEffectChoices("fumble"),
     default: EXIT_EFFECTS.CURRENT
   });
 }

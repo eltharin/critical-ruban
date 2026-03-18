@@ -11,12 +11,25 @@ const BANNER_SLOTS = [
 
 const EXIT_EFFECTS = {
   CURRENT: "current",
-  FROZEN_SHATTER: "frozenShatter"
+  FROZEN_SHATTER: "frozenShatter",
+  CRYSTALIZE: "crystalize"
 };
 
 const EXIT_TIMINGS = {
   current: { startDelay: 3000, totalDuration: 900 },
-  frozenShatter: { startDelay: 3000, totalDuration: 1350 }
+  frozenShatter: { startDelay: 3000, totalDuration: 1350 },
+  crystalize: { startDelay: 3000, totalDuration: 1000 }
+};
+
+const EXIT_EFFECTS_BY_TYPE = {
+  critical: [
+    EXIT_EFFECTS.CURRENT,
+    EXIT_EFFECTS.CRYSTALIZE
+  ],
+  fumble: [
+    EXIT_EFFECTS.CURRENT,
+    EXIT_EFFECTS.FROZEN_SHATTER
+  ]
 };
 
 const COLORS = {
@@ -30,6 +43,19 @@ const COLORS = {
   shadow: 0x000000,
   white: 0xffffff
 };
+
+function getExitEffectChoices(type) {
+  const list = EXIT_EFFECTS_BY_TYPE[type] ?? [EXIT_EFFECTS.CURRENT];
+  return list.reduce((acc, key) => {
+    acc[key] = game.i18n.localize(`critical-ruban.settings.exitEffectChoices.${key}`);
+    return acc;
+  }, {});
+}
+
+function getValidatedExitEffect(type, requested) {
+  const list = EXIT_EFFECTS_BY_TYPE[type] ?? [EXIT_EFFECTS.CURRENT];
+  return list.includes(requested) ? requested : EXIT_EFFECTS.CURRENT;
+}
 
 function gRoundRect(g, x, y, w, h, r, fillColor = null, fillAlpha = 1, lineWidth = 0, lineColor = 0x000000, lineAlpha = 1) {
   if (lineWidth > 0) g.lineStyle(lineWidth, lineColor, lineAlpha);
@@ -204,4 +230,23 @@ function easeOutBackSoft(t) {
   const c1 = 1.12;
   const c3 = c1 + 1;
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+if (!globalThis.CriticalRubanEffects) {
+  const registry = new Map();
+
+  globalThis.CriticalRubanEffects = {
+    registerRubanEffect(effect) {
+      if (!effect?.id) throw new Error("Ruban effect missing id");
+      registry.set(effect.id, effect);
+    },
+
+    getRubanEffect(id) {
+      return registry.get(id) ?? registry.get(EXIT_EFFECTS.CURRENT);
+    },
+
+    getAllRubanEffects() {
+      return Array.from(registry.values());
+    }
+  };
 }

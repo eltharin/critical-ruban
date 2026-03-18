@@ -66,10 +66,10 @@ class CritBanner {
     this.slotIndex = slotIndex;
     this.type = type;
     this.label = `${label} : ${name}`;
-    this.isFumble = type === "fumble";
-    this.exitEffect = (this.isFumble && exitEffect === EXIT_EFFECTS.FROZEN_SHATTER)
-      ? EXIT_EFFECTS.FROZEN_SHATTER
-      : EXIT_EFFECTS.CURRENT;
+    this.kind = type === "fumble" ? "fumble" : "critical";
+    this.isFumble = this.kind === "fumble";
+    this.exitEffect = getValidatedExitEffect(this.kind, exitEffect);
+    this.effect = globalThis.CriticalRubanEffects.getRubanEffect(this.exitEffect);
 
     this.baseColorHex = cssToHex(normalizeHexColor(color) ?? "#8b0000");
     this.mainColor = this.isFumble ? mixHex(this.baseColorHex, COLORS.red, 0.35) : this.baseColorHex;
@@ -87,7 +87,9 @@ class CritBanner {
     this.state = "enter";
     this.stateTime = 0;
     this.elapsed = 0;
+    this.lastDtMS = 16.67;
     this.done = false;
+
     this.particles = [];
     this.shards = [];
     this.floatSeed = Math.random() * Math.PI * 2;
@@ -95,11 +97,14 @@ class CritBanner {
 
     this.freezeOverlay = null;
     this.crackLines = null;
+    this.shatterFlash = null;
+    this.crystalOverlay = null;
+    this.crystalSparkle = null;
+
     this.shatterPrepared = false;
     this.shatterStarted = false;
     this.shatterSnapshot = null;
     this.shatterSourceBounds = null;
-    this.shatterFlash = null;
 
     this.root = new PIXI.Container();
     this.root.sortableChildren = true;
@@ -112,16 +117,18 @@ class CritBanner {
     this.root.addChild(this.motion);
 
     this.fx = new PIXI.Container();
-    this.fx.zIndex = 20;
+    this.fx.zIndex = 30;
     this.motion.addChild(this.fx);
 
     this.bodyGroup = new PIXI.Container();
+    this.bodyGroup.sortableChildren = true;
     this.bodyGroup.zIndex = 10;
     this.motion.addChild(this.bodyGroup);
 
     this.measure();
     this.buildDisplay();
     this.applySlot();
+    this.effect.setup?.(this);
   }
 
   attach(manager) {
@@ -168,17 +175,17 @@ class CritBanner {
     this.body = this.drawBody();
     this.innerGlow = this.drawInnerGlow();
     this.shine = this.drawShine();
-    this.badge = this.drawBadge();
-    this.text = this.drawText();
     this.topEdge = this.drawTopEdge();
     this.bottomEdge = this.drawBottomEdge();
+    this.badge = this.drawBadge();
+    this.text = this.drawText();
     this.frostLines = this.drawFrostLines();
     this.flare = this.drawFlare();
     this.freezeOverlay = this.drawFreezeOverlay();
     this.crackLines = this.drawCrackLines();
     this.shatterFlash = this.drawShatterFlash();
-    this.shatterFlash.alpha = 0;
-    this.shatterFlash.zIndex = 30;
+    this.crystalOverlay = this.drawCrystalOverlay();
+    this.crystalSparkle = this.drawCrystalSparkle();
 
     this.leftTail.x = -this.mainWidth / 2 - 14;
     this.rightTail.x = this.mainWidth / 2 + 14;
@@ -191,6 +198,8 @@ class CritBanner {
       this.body,
       this.innerGlow,
       this.shine,
+      this.crystalOverlay,
+      this.crystalSparkle,
       this.topEdge,
       this.bottomEdge,
       this.badge,
@@ -209,11 +218,53 @@ class CritBanner {
     this.freezeOverlay.alpha = 0.0;
     this.crackLines.alpha = 0.0;
     this.shatterFlash.alpha = 0.0;
+    this.crystalOverlay.alpha = 0.0;
+    this.crystalSparkle.alpha = 0.0;
 
     this.text.x = -this.mainWidth / 2 + 86;
     this.text.y = -this.text.height / 2;
     this.badge.x = -this.mainWidth / 2 + 16;
     this.badge.y = -this.badgeSize / 2;
+  }
+
+  ensureCommonFxLayers() {}
+
+  ensureFrozenFxLayers() {
+    this.freezeOverlay.visible = true;
+    this.crackLines.visible = true;
+    this.shatterFlash.visible = true;
+  }
+
+  ensureCrystalFxLayers() {
+    this.crystalOverlay.visible = true;
+    this.crystalSparkle.visible = true;
+  }
+
+  resetVisualState() {
+    this.root.alpha = 1;
+    this.root.position.set(this.baseX, this.baseY);
+    this.motion.scale.set(this.baseScale);
+    this.motion.rotation = this.baseRotation;
+    this.motion.tint = 0xffffff;
+
+    this.bodyGroup.visible = true;
+    this.bodyGroup.alpha = 1;
+
+    this.innerGlow.alpha = 0.55;
+    this.shine.alpha = 0;
+    this.frostLines.alpha = 0;
+    this.flare.alpha = 0;
+    this.freezeOverlay.alpha = 0;
+    this.crackLines.alpha = 0;
+    this.shatterFlash.alpha = 0;
+    this.crystalOverlay.alpha = 0;
+    this.crystalSparkle.alpha = 0;
+
+    this.freezeOverlay.visible = true;
+    this.crackLines.visible = true;
+    this.shatterFlash.visible = true;
+    this.crystalOverlay.visible = true;
+    this.crystalSparkle.visible = true;
   }
 
   drawBody() {
@@ -499,9 +550,6 @@ class CritBanner {
     const frostColor = mixHex(COLORS.ice, 0x1e3a5f, 0.55);
     const deepFrost = 0x0b1f33;
 
-    // ===== Corps central : base sombre =====
-    const bodyBase = new PIXI.Graphics();
-
     const x = -this.mainWidth / 2;
     const y = -this.height / 2;
     const w = this.mainWidth;
@@ -510,6 +558,7 @@ class CritBanner {
     const topInset = 18;
     const sideBulge = 10;
 
+    const bodyBase = new PIXI.Graphics();
     bodyBase.beginFill(deepFrost, 0.34);
     bodyBase.moveTo(x + topInset, y + 2);
     bodyBase.bezierCurveTo(
@@ -530,9 +579,7 @@ class CritBanner {
     );
     bodyBase.endFill();
 
-    // ===== Corps central : couche froide =====
     const bodyFrost = new PIXI.Graphics();
-
     bodyFrost.beginFill(frostColor, 0.28);
     bodyFrost.moveTo(x + topInset, y + 2);
     bodyFrost.bezierCurveTo(
@@ -553,7 +600,6 @@ class CritBanner {
     );
     bodyFrost.endFill();
 
-    // ===== Reflet central =====
     const gloss = new PIXI.Graphics();
     gloss.beginFill(COLORS.white, 0.14);
     gloss.moveTo(x + 24, y + 10);
@@ -580,55 +626,45 @@ class CritBanner {
       const tailBase = new PIXI.Graphics();
       tailBase.beginFill(deepFrost, 0.30);
       tailBase.moveTo(sign * 4, -halfH + 4);
-
       tailBase.bezierCurveTo(
         sign * (tw * 0.18), -halfH + 1,
         sign * (tw * 0.66), -halfH + 6,
         sign * (tw - 8), -halfH + 14
       );
-
       tailBase.lineTo(sign * (tw - 22), 0);
       tailBase.lineTo(sign * (tw - 8), halfH - 14);
-
       tailBase.bezierCurveTo(
         sign * (tw * 0.66), halfH - 6,
         sign * (tw * 0.18), halfH - 1,
         sign * 4, halfH - 4
       );
-
       tailBase.bezierCurveTo(
         sign * 12, halfH * 0.32,
         sign * 12, -halfH * 0.32,
         sign * 4, -halfH + 4
       );
-
       tailBase.endFill();
 
       const tailFrost = new PIXI.Graphics();
       tailFrost.beginFill(frostColor, 0.24);
       tailFrost.moveTo(sign * 4, -halfH + 4);
-
       tailFrost.bezierCurveTo(
         sign * (tw * 0.18), -halfH + 1,
         sign * (tw * 0.66), -halfH + 6,
         sign * (tw - 8), -halfH + 14
       );
-
       tailFrost.lineTo(sign * (tw - 22), 0);
       tailFrost.lineTo(sign * (tw - 8), halfH - 14);
-
       tailFrost.bezierCurveTo(
         sign * (tw * 0.66), halfH - 6,
         sign * (tw * 0.18), halfH - 1,
         sign * 4, halfH - 4
       );
-
       tailFrost.bezierCurveTo(
         sign * 12, halfH * 0.32,
         sign * 12, -halfH * 0.32,
         sign * 4, -halfH + 4
       );
-
       tailFrost.endFill();
 
       const tailShine = new PIXI.Graphics();
@@ -653,7 +689,6 @@ class CritBanner {
     right.x = this.mainWidth / 2 + 14;
 
     g.addChild(bodyBase, bodyFrost, gloss, left, right);
-
     return g;
   }
 
@@ -699,6 +734,173 @@ class CritBanner {
     return g;
   }
 
+  drawShatterFlash() {
+    const g = new PIXI.Container();
+
+    const body = new PIXI.Graphics();
+
+    const x = -this.mainWidth / 2;
+    const y = -this.height / 2;
+    const w = this.mainWidth;
+    const h = this.height;
+
+    const topInset = 18;
+    const sideBulge = 10;
+
+    body.beginFill(COLORS.white, 0.32);
+    body.moveTo(x + topInset, y + 2);
+    body.bezierCurveTo(
+      x - sideBulge + 2, y + h * 0.10,
+      x - sideBulge + 2, y + h * 0.90,
+      x + topInset, y + h - 2
+    );
+    body.lineTo(x + w - topInset, y + h - 2);
+    body.bezierCurveTo(
+      x + w + sideBulge - 2, y + h * 0.90,
+      x + w + sideBulge - 2, y + h * 0.10,
+      x + w - topInset, y + 2
+    );
+    body.bezierCurveTo(
+      x + w * 0.72, y + 8,
+      x + w * 0.28, y + 8,
+      x + topInset, y + 2
+    );
+    body.endFill();
+
+    const makeTailFlash = (isLeft) => {
+      const t = new PIXI.Graphics();
+      const sign = isLeft ? -1 : 1;
+      const th = this.height * 0.76;
+      const halfH = th / 2;
+      const tw = this.tailWidth + 18;
+
+      t.beginFill(COLORS.white, 0.24);
+      t.moveTo(sign * 4, -halfH + 4);
+      t.bezierCurveTo(
+        sign * (tw * 0.18), -halfH + 1,
+        sign * (tw * 0.66), -halfH + 6,
+        sign * (tw - 8), -halfH + 14
+      );
+      t.lineTo(sign * (tw - 22), 0);
+      t.lineTo(sign * (tw - 8), halfH - 14);
+      t.bezierCurveTo(
+        sign * (tw * 0.66), halfH - 6,
+        sign * (tw * 0.18), halfH - 1,
+        sign * 4, halfH - 4
+      );
+      t.bezierCurveTo(
+        sign * 12, halfH * 0.32,
+        sign * 12, -halfH * 0.32,
+        sign * 4, -halfH + 4
+      );
+      t.endFill();
+      return t;
+    };
+
+    const left = makeTailFlash(true);
+    const right = makeTailFlash(false);
+
+    left.x = -this.mainWidth / 2 - 14;
+    right.x = this.mainWidth / 2 + 14;
+
+    g.addChild(body, left, right);
+    return g;
+  }
+
+  drawCrystalOverlay() {
+    const g = new PIXI.Container();
+
+    const body = new PIXI.Graphics();
+    const crystalColor = mixHex(COLORS.ice, COLORS.white, 0.45);
+
+    const x = -this.mainWidth / 2;
+    const y = -this.height / 2;
+    const w = this.mainWidth;
+    const h = this.height;
+
+    const topInset = 18;
+    const sideBulge = 10;
+
+    body.beginFill(crystalColor, 0.18);
+    body.moveTo(x + topInset, y + 2);
+    body.bezierCurveTo(
+      x - sideBulge + 2, y + h * 0.10,
+      x - sideBulge + 2, y + h * 0.90,
+      x + topInset, y + h - 2
+    );
+    body.lineTo(x + w - topInset, y + h - 2);
+    body.bezierCurveTo(
+      x + w + sideBulge - 2, y + h * 0.90,
+      x + w + sideBulge - 2, y + h * 0.10,
+      x + w - topInset, y + 2
+    );
+    body.bezierCurveTo(
+      x + w * 0.72, y + 8,
+      x + w * 0.28, y + 8,
+      x + topInset, y + 2
+    );
+    body.endFill();
+
+    const makeTailOverlay = (isLeft) => {
+      const t = new PIXI.Graphics();
+      const sign = isLeft ? -1 : 1;
+      const th = this.height * 0.76;
+      const halfH = th / 2;
+      const tw = this.tailWidth + 18;
+
+      t.beginFill(crystalColor, 0.16);
+      t.moveTo(sign * 4, -halfH + 4);
+      t.bezierCurveTo(
+        sign * (tw * 0.18), -halfH + 1,
+        sign * (tw * 0.66), -halfH + 6,
+        sign * (tw - 8), -halfH + 14
+      );
+      t.lineTo(sign * (tw - 22), 0);
+      t.lineTo(sign * (tw - 8), halfH - 14);
+      t.bezierCurveTo(
+        sign * (tw * 0.66), halfH - 6,
+        sign * (tw * 0.18), halfH - 1,
+        sign * 4, halfH - 4
+      );
+      t.bezierCurveTo(
+        sign * 12, halfH * 0.32,
+        sign * 12, -halfH * 0.32,
+        sign * 4, -halfH + 4
+      );
+      t.endFill();
+      return t;
+    };
+
+    const left = makeTailOverlay(true);
+    const right = makeTailOverlay(false);
+
+    left.x = -this.mainWidth / 2 - 14;
+    right.x = this.mainWidth / 2 + 14;
+
+    g.addChild(body, left, right);
+    return g;
+  }
+
+  drawCrystalSparkle() {
+    const c = new PIXI.Container();
+
+    const bar1 = new PIXI.Graphics();
+    bar1.beginFill(COLORS.white, 0.16);
+    bar1.drawRoundedRect(-this.mainWidth * 0.20, -this.height * 0.22, this.mainWidth * 0.28, 8, 4);
+    bar1.endFill();
+
+    const bar2 = new PIXI.Graphics();
+    bar2.beginFill(COLORS.iceBright, 0.12);
+    bar2.drawRoundedRect(-this.mainWidth * 0.02, -this.height * 0.08, this.mainWidth * 0.22, 6, 3);
+    bar2.endFill();
+
+    const star = new PIXI.Graphics();
+    gStar(star, this.mainWidth * 0.16, -this.height * 0.12, 4, 8, 3, COLORS.white, 0.18);
+
+    c.addChild(bar1, bar2, star);
+    return c;
+  }
+
   spawnIceDust(count = 18) {
     for (let i = 0; i < count; i++) {
       const sprite = new PIXI.Graphics();
@@ -715,7 +917,7 @@ class CritBanner {
         life: randomBetween(250, 650),
         vx: randomBetween(-90, 90),
         vy: randomBetween(-120, 20),
-        vr: randomBetween(-0.08, 0.08),
+        vr: 0,
         scaleFrom: 1,
         scaleTo: 0.3,
         startAlpha: randomBetween(0.45, 0.95)
@@ -723,9 +925,32 @@ class CritBanner {
     }
   }
 
+  spawnCrystalDust(count = 8) {
+    for (let i = 0; i < count; i++) {
+      const p = new PIXI.Graphics();
+      gCircle(p, 0, 0, randomBetween(1.4, 2.8), COLORS.white, 0.9);
+
+      p.x = randomBetween(-this.mainWidth / 2 + 20, this.mainWidth / 2 - 20);
+      p.y = randomBetween(-10, 12);
+
+      this.fx.addChild(p);
+
+      this.particles.push({
+        sprite: p,
+        age: 0,
+        life: randomBetween(420, 820),
+        vx: randomBetween(-12, 12),
+        vy: randomBetween(-90, -40),
+        vr: 0,
+        scaleFrom: 1,
+        scaleTo: 0.15,
+        startAlpha: 0.85
+      });
+    }
+  }
+
   getShatterPolygons() {
     const bodyL = -this.mainWidth / 2;
-    const bodyR = this.mainWidth / 2;
     const totalL = -this.totalWidth / 2;
     const totalR = this.totalWidth / 2;
     const yT = -this.height / 2;
@@ -734,38 +959,33 @@ class CritBanner {
     const bx = (r) => bodyL + this.mainWidth * r;
 
     return [
-      // Queue gauche
       [totalL + 10, -22, totalL + 28, -18, totalL + 40, -4, totalL + 20, 0],
       [totalL + 20, 0, totalL + 40, -4, totalL + 30, 12, totalL + 10, 20],
 
-      // Bande haute du corps
-      [bx(0.02), yT + 8,  bx(0.16), yT + 6,  bx(0.14), -10, bx(0.04), -4],
-      [bx(0.16), yT + 6,  bx(0.30), yT + 6,  bx(0.28), -8,  bx(0.14), -10],
-      [bx(0.30), yT + 6,  bx(0.44), yT + 7,  bx(0.42), -6,  bx(0.28), -8],
-      [bx(0.44), yT + 7,  bx(0.58), yT + 7,  bx(0.56), -6,  bx(0.42), -6],
-      [bx(0.58), yT + 7,  bx(0.72), yT + 8,  bx(0.70), -4,  bx(0.56), -6],
-      [bx(0.72), yT + 8,  bx(0.86), yT + 8,  bx(0.84), -2,  bx(0.70), -4],
-      [bx(0.86), yT + 8,  bx(0.98), yT + 10, bx(0.96), 0,   bx(0.84), -2],
+      [bx(0.02), yT + 8, bx(0.16), yT + 6, bx(0.14), -10, bx(0.04), -4],
+      [bx(0.16), yT + 6, bx(0.30), yT + 6, bx(0.28), -8, bx(0.14), -10],
+      [bx(0.30), yT + 6, bx(0.44), yT + 7, bx(0.42), -6, bx(0.28), -8],
+      [bx(0.44), yT + 7, bx(0.58), yT + 7, bx(0.56), -6, bx(0.42), -6],
+      [bx(0.58), yT + 7, bx(0.72), yT + 8, bx(0.70), -4, bx(0.56), -6],
+      [bx(0.72), yT + 8, bx(0.86), yT + 8, bx(0.84), -2, bx(0.70), -4],
+      [bx(0.86), yT + 8, bx(0.98), yT + 10, bx(0.96), 0, bx(0.84), -2],
 
-      // Bande centrale
-      [bx(0.02), -2,  bx(0.16), -10, bx(0.15), 12, bx(0.02), 10],
-      [bx(0.16), -10, bx(0.30), -8,  bx(0.29), 10, bx(0.15), 12],
-      [bx(0.30), -8,  bx(0.44), -6,  bx(0.43), 10, bx(0.29), 10],
-      [bx(0.44), -6,  bx(0.58), -4,  bx(0.57), 10, bx(0.43), 10],
-      [bx(0.58), -4,  bx(0.72), -4,  bx(0.71), 10, bx(0.57), 10],
-      [bx(0.72), -4,  bx(0.86), -2,  bx(0.85), 12, bx(0.71), 10],
-      [bx(0.86), -2,  bx(0.98), 0,   bx(0.97), 12, bx(0.85), 12],
+      [bx(0.02), -2, bx(0.16), -10, bx(0.15), 12, bx(0.02), 10],
+      [bx(0.16), -10, bx(0.30), -8, bx(0.29), 10, bx(0.15), 12],
+      [bx(0.30), -8, bx(0.44), -6, bx(0.43), 10, bx(0.29), 10],
+      [bx(0.44), -6, bx(0.58), -4, bx(0.57), 10, bx(0.43), 10],
+      [bx(0.58), -4, bx(0.72), -4, bx(0.71), 10, bx(0.57), 10],
+      [bx(0.72), -4, bx(0.86), -2, bx(0.85), 12, bx(0.71), 10],
+      [bx(0.86), -2, bx(0.98), 0, bx(0.97), 12, bx(0.85), 12],
 
-      // Bande basse
       [bx(0.02), 10, bx(0.15), 12, bx(0.13), yB - 10, bx(0.01), yB - 8],
-      [bx(0.15), 12, bx(0.29), 10, bx(0.27), yB - 8,  bx(0.13), yB - 10],
-      [bx(0.29), 10, bx(0.43), 10, bx(0.41), yB - 8,  bx(0.27), yB - 8],
-      [bx(0.43), 10, bx(0.57), 10, bx(0.55), yB - 8,  bx(0.41), yB - 8],
-      [bx(0.57), 10, bx(0.71), 10, bx(0.69), yB - 8,  bx(0.55), yB - 8],
-      [bx(0.71), 10, bx(0.85), 12, bx(0.83), yB - 6,  bx(0.69), yB - 8],
-      [bx(0.85), 12, bx(0.98), 10, bx(0.96), yB - 4,  bx(0.83), yB - 6],
+      [bx(0.15), 12, bx(0.29), 10, bx(0.27), yB - 8, bx(0.13), yB - 10],
+      [bx(0.29), 10, bx(0.43), 10, bx(0.41), yB - 8, bx(0.27), yB - 8],
+      [bx(0.43), 10, bx(0.57), 10, bx(0.55), yB - 8, bx(0.41), yB - 8],
+      [bx(0.57), 10, bx(0.71), 10, bx(0.69), yB - 8, bx(0.55), yB - 8],
+      [bx(0.71), 10, bx(0.85), 12, bx(0.83), yB - 6, bx(0.69), yB - 8],
+      [bx(0.85), 12, bx(0.98), 10, bx(0.96), yB - 4, bx(0.83), yB - 6],
 
-      // Queue droite
       [totalR - 10, -22, totalR - 28, -18, totalR - 40, -4, totalR - 20, 0],
       [totalR - 20, 0, totalR - 40, -4, totalR - 30, 12, totalR - 10, 20]
     ];
@@ -934,10 +1154,10 @@ class CritBanner {
       this.updateEnter();
       if (this.stateTime >= this.enterDuration) this.changeState("hold");
     } else if (this.state === "hold") {
-      this.updateHold();
+      this.updateHold(dtMS);
       if (this.stateTime >= this.holdDuration) this.changeState("exit");
     } else if (this.state === "exit") {
-      this.updateExit();
+      this.updateExit(dtMS);
       if (this.stateTime >= this.exitDuration) this.done = true;
     }
 
@@ -951,31 +1171,7 @@ class CritBanner {
   }
 
   prepareExit() {
-    if (this.isFumble && this.exitEffect === EXIT_EFFECTS.FROZEN_SHATTER) {
-      this.shatterPrepared = true;
-      this.shatterStarted = false;
-      this.bodyGroup.visible = true;
-
-      if (this.freezeOverlay) this.freezeOverlay.visible = true;
-      if (this.crackLines) this.crackLines.visible = true;
-
-      this.freezeOverlay.alpha = 0;
-      this.crackLines.alpha = 0;
-
-      if (this.shatterSnapshot) {
-        this.shatterSnapshot.destroy(true);
-        this.shatterSnapshot = null;
-      }
-      this.shatterSourceBounds = null;
-
-      if (this.shatterFlash) this.shatterFlash.alpha = 0;
-      this.bodyGroup.alpha = 1;
-
-      for (const s of this.shards) s.sprite.destroy?.();
-      this.shards = [];
-
-      this.spawnIceDust(12);
-    }
+    this.effect.onPrepareExit?.(this);
   }
 
   updateEnter() {
@@ -996,7 +1192,7 @@ class CritBanner {
     this.updateCommonFX(t, true);
   }
 
-  updateHold() {
+  updateHold(dtMS) {
     const t = clamp01(this.stateTime / this.holdDuration);
     const bob = Math.sin((this.elapsed / 1000) * 2.6 + this.floatSeed) * 1.2;
     const glow = 0.48 + (Math.sin((this.elapsed / 1000) * 4.8 + this.floatSeed) * 0.08);
@@ -1012,34 +1208,63 @@ class CritBanner {
     this.shine.alpha = shinePulse > 0.15 && shinePulse < 0.70 ? (Math.sin(shineT * Math.PI) * 0.30) : 0;
     this.shine.x = lerp(-this.mainWidth * 0.7, this.mainWidth * 0.7, easeInOutQuad(shineT));
 
-    this.frostLines.alpha = (this.isFumble && this.exitEffect === EXIT_EFFECTS.FROZEN_SHATTER)
-      ? 0.10 + Math.sin(t * Math.PI) * 0.06
-      : 0;
-
+    this.frostLines.alpha = 0;
     this.flare.alpha = 0;
+    this.crystalOverlay.alpha = 0;
+    this.crystalSparkle.alpha = 0;
+    this.motion.tint = 0xffffff;
+
+    this.effect.onHold?.(this, t, dtMS);
   }
 
-  updateExit() {
+  updateExit(dtMS) {
     const t = clamp01(this.stateTime / this.exitDuration);
-
-    if (this.isFumble && this.exitEffect === EXIT_EFFECTS.FROZEN_SHATTER) {
-      this.updateFrozenShatterExit(t);
-    } else {
-      this.updateCurrentExit(t);
-    }
+    this.effect.onExit?.(this, t, dtMS);
   }
 
-  updateFrozenShatterExit(t) {
+  updateCurrentExitBase(t) {
+    const e = easeInCubic(t);
+    this.root.alpha = 1 - e;
+    this.root.position.set(this.baseX + lerp(0, 40, e), this.baseY + lerp(0, -10, e));
+    this.motion.scale.set(this.baseScale * lerp(1, 1.04, e));
+    this.motion.rotation = this.baseRotation + lerp(0, this.isFumble ? -0.03 : 0.02, e);
+    this.innerGlow.alpha = lerp(0.5, 0.15, e);
+    this.shine.alpha = lerp(this.shine.alpha, 0, 0.3);
+    this.crystalOverlay.alpha = 0;
+    this.crystalSparkle.alpha = 0;
+  }
+
+  prepareFrozenShatter() {
+    this.resetVisualState();
+    this.shatterPrepared = true;
+    this.shatterStarted = false;
+    this.freezeOverlay.visible = true;
+    this.crackLines.visible = true;
+    this.shatterFlash.visible = true;
+
+    if (this.shatterSnapshot) {
+      this.shatterSnapshot.destroy(true);
+      this.shatterSnapshot = null;
+    }
+    this.shatterSourceBounds = null;
+
+    for (const s of this.shards) s.sprite.destroy?.();
+    this.shards = [];
+
+    this.spawnIceDust(12);
+  }
+
+  updateFrozenShatterExitEffect(t, dtMS) {
     const freezeT = clamp01(t / 0.42);
     const shatterT = clamp01((t - 0.42) / 0.58);
 
-    
     if (t <= 0.42) {
       const e = easeOutCubic(freezeT);
       const flashT = clamp01((freezeT - 0.84) / 0.16);
 
       this.shatterFlash.alpha = Math.sin(flashT * Math.PI) * 0.35;
       this.motion.tint = mixHex(0xffffff, COLORS.ice, e * 0.35);
+
       this.root.alpha = 1;
       this.root.position.set(this.baseX, this.baseY);
       this.motion.scale.set(this.baseScale * lerp(1, 1.015, e));
@@ -1062,10 +1287,13 @@ class CritBanner {
       this.shatterFlash.alpha = 0;
       this.freezeOverlay.alpha = 0;
       this.crackLines.alpha = 0;
+
       this.createShatterShards();
       this.bodyGroup.visible = false;
-      if (this.freezeOverlay) this.freezeOverlay.visible = false;
-      if (this.crackLines) this.crackLines.visible = false;
+      this.freezeOverlay.visible = false;
+      this.crackLines.visible = false;
+      this.shatterFlash.visible = false;
+
       this.spawnIceDust(18);
     }
 
@@ -1074,11 +1302,11 @@ class CritBanner {
     this.motion.scale.set(this.baseScale);
     this.motion.rotation = this.baseRotation;
 
-    const dt = (this.lastDtMS ?? 16.67) / 1000;
+    const dt = (dtMS ?? this.lastDtMS ?? 16.67) / 1000;
 
     for (const s of this.shards) {
       if (s.delay > 0) {
-        s.delay -= 16.67;
+        s.delay -= (dtMS ?? this.lastDtMS ?? 16.67);
         continue;
       }
 
@@ -1089,14 +1317,60 @@ class CritBanner {
     }
   }
 
-  updateCurrentExit(t) {
-    const e = easeInCubic(t);
-    this.root.alpha = 1 - e;
-    this.root.position.set(this.baseX + lerp(0, 40, e), this.baseY + lerp(0, -10, e));
-    this.motion.scale.set(this.baseScale * lerp(1, 1.04, e));
-    this.motion.rotation = this.baseRotation + lerp(0, this.isFumble ? -0.03 : 0.02, e);
-    this.innerGlow.alpha = lerp(0.5, 0.15, e);
-    this.shine.alpha = lerp(this.shine.alpha, 0, 0.3);
+  cleanupFrozenShatter() {
+    for (const s of this.shards) s.sprite.destroy?.();
+    this.shards = [];
+
+    if (this.shatterSnapshot) {
+      this.shatterSnapshot.destroy(true);
+      this.shatterSnapshot = null;
+    }
+  }
+
+  prepareCrystalize() {
+    this.resetVisualState();
+    this.crystalOverlay.alpha = 0.6;
+    this.crystalSparkle.alpha = 0.35;
+  }
+
+  updateCrystalizeHoldEffect(t, dtMS) {
+    const pulse = (Math.sin((this.elapsed / 1000) * 4.2) + 1) * 0.5;
+    this.crystalOverlay.alpha = lerp(0.10, 0.48, t);
+    this.crystalSparkle.alpha = 0.12 + pulse * 0.18;
+    this.motion.tint = mixHex(0xffffff, COLORS.ice, 0.22 + t * 0.10);
+    this.innerGlow.alpha = 0.48 + pulse * 0.08;
+
+    if (this.crystalSparkle.children[0]) {
+      this.crystalSparkle.children[0].x = lerp(-this.mainWidth * 0.10, this.mainWidth * 0.18, pulse);
+    }
+    if (this.crystalSparkle.children[1]) {
+      this.crystalSparkle.children[1].x = lerp(-this.mainWidth * 0.04, this.mainWidth * 0.10, 1 - pulse);
+    }
+
+    if (Math.random() < 0.04) this.spawnCrystalDust(1);
+  }
+
+  updateCrystalizeExitEffect(t, dtMS) {
+    const e = easeOutCubic(t);
+
+    this.root.alpha = 1 - e * 0.15;
+    this.root.position.set(this.baseX, this.baseY - lerp(0, 10, e));
+    this.motion.scale.set(this.baseScale * lerp(1, 1.05, e));
+    this.motion.rotation = this.baseRotation;
+
+    this.motion.tint = mixHex(0xffffff, COLORS.iceBright, 0.20 * (1 - t));
+    this.crystalOverlay.alpha = lerp(0.6, 0, e);
+    this.crystalSparkle.alpha = lerp(0.40, 0, e);
+    this.innerGlow.alpha = lerp(0.5, 0, e);
+    this.shine.alpha = lerp(this.shine.alpha, 0, 0.25);
+
+    if (Math.random() < 0.18) this.spawnCrystalDust(1);
+  }
+
+  cleanupCrystalize() {
+    this.crystalOverlay.alpha = 0;
+    this.crystalSparkle.alpha = 0;
+    this.motion.tint = 0xffffff;
   }
 
   updateCommonFX(t, entering = false) {
@@ -1114,23 +1388,24 @@ class CritBanner {
       const t = clamp01(p.age / p.life);
       p.sprite.x += p.vx * (dtMS / 1000);
       p.sprite.y += p.vy * (dtMS / 1000);
-      p.sprite.rotation += p.vr;
-      const scale = lerp(p.scaleFrom, p.scaleTo, t);
+      p.sprite.rotation += p.vr ?? 0;
+
+      const scale = lerp(p.scaleFrom ?? 1, p.scaleTo ?? 0.3, t);
       p.sprite.scale.set(scale);
-      p.sprite.alpha = p.startAlpha * (1 - easeInQuad(t));
+      p.sprite.alpha = (p.startAlpha ?? 1) * (1 - easeInQuad(t));
+
       if (p.age >= p.life) {
-        p.sprite.destroy();
+        p.sprite.destroy?.();
         this.particles.splice(i, 1);
       }
     }
   }
 
   destroy() {
-    for (const p of this.particles) p.sprite.destroy?.();
-    for (const s of this.shards) s.sprite.destroy?.();
+    this.effect.onDestroy?.(this);
 
+    for (const p of this.particles) p.sprite.destroy?.();
     this.particles = [];
-    this.shards = [];
 
     if (this.shatterSnapshot) {
       this.shatterSnapshot.destroy(true);
@@ -1138,97 +1413,5 @@ class CritBanner {
     }
 
     this.root.destroy({ children: true });
-  }
-
-  drawShatterFlash() {
-    const g = new PIXI.Graphics();
-    g.beginFill(COLORS.white, 1);
-    g.drawRoundedRect(
-      -this.totalWidth / 2,
-      -this.height / 2,
-      this.totalWidth,
-      this.height,
-      18
-    );
-    g.endFill();
-    return g;
-  }
-
-  drawShatterFlash() {
-    const g = new PIXI.Container();
-
-    const body = new PIXI.Graphics();
-
-    const x = -this.mainWidth / 2;
-    const y = -this.height / 2;
-    const w = this.mainWidth;
-    const h = this.height;
-
-    const topInset = 18;
-    const sideBulge = 10;
-
-    body.beginFill(COLORS.white, 0.32);
-    body.moveTo(x + topInset, y + 2);
-    body.bezierCurveTo(
-      x - sideBulge + 2, y + h * 0.10,
-      x - sideBulge + 2, y + h * 0.90,
-      x + topInset, y + h - 2
-    );
-    body.lineTo(x + w - topInset, y + h - 2);
-    body.bezierCurveTo(
-      x + w + sideBulge - 2, y + h * 0.90,
-      x + w + sideBulge - 2, y + h * 0.10,
-      x + w - topInset, y + 2
-    );
-    body.bezierCurveTo(
-      x + w * 0.72, y + 8,
-      x + w * 0.28, y + 8,
-      x + topInset, y + 2
-    );
-    body.endFill();
-
-    const makeTailFlash = (isLeft) => {
-      const t = new PIXI.Graphics();
-      const sign = isLeft ? -1 : 1;
-      const th = this.height * 0.76;
-      const halfH = th / 2;
-      const tw = this.tailWidth + 18;
-
-      t.beginFill(COLORS.white, 0.24);
-      t.moveTo(sign * 4, -halfH + 4);
-
-      t.bezierCurveTo(
-        sign * (tw * 0.18), -halfH + 1,
-        sign * (tw * 0.66), -halfH + 6,
-        sign * (tw - 8), -halfH + 14
-      );
-
-      t.lineTo(sign * (tw - 22), 0);
-      t.lineTo(sign * (tw - 8), halfH - 14);
-
-      t.bezierCurveTo(
-        sign * (tw * 0.66), halfH - 6,
-        sign * (tw * 0.18), halfH - 1,
-        sign * 4, halfH - 4
-      );
-
-      t.bezierCurveTo(
-        sign * 12, halfH * 0.32,
-        sign * 12, -halfH * 0.32,
-        sign * 4, -halfH + 4
-      );
-
-      t.endFill();
-      return t;
-    };
-
-    const left = makeTailFlash(true);
-    const right = makeTailFlash(false);
-
-    left.x = -this.mainWidth / 2 - 14;
-    right.x = this.mainWidth / 2 + 14;
-
-    g.addChild(body, left, right);
-    return g;
   }
 }
