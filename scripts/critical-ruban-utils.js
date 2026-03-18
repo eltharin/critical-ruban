@@ -10,11 +10,13 @@ const BANNER_SLOTS = [
 ];
 
 const EXIT_EFFECTS = {
-  CURRENT: "current"
+  CURRENT: "current",
+  FROZEN_SHATTER: "frozenShatter"
 };
 
 const EXIT_TIMINGS = {
-  current: { startDelay: 3000, totalDuration: 900 }
+  current: { startDelay: 3000, totalDuration: 900 },
+  frozenShatter: { startDelay: 3000, totalDuration: 1350 }
 };
 
 const COLORS = {

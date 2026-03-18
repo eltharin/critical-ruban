@@ -68,7 +68,8 @@ function registerSettings() {
     config: true,
     type: String,
     choices: {
-      [EXIT_EFFECTS.CURRENT]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.current")
+      [EXIT_EFFECTS.CURRENT]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.current"),
+      [EXIT_EFFECTS.FROZEN_SHATTER]: game.i18n.localize("critical-ruban.settings.exitEffectChoices.frozenShatter")
     },
     default: EXIT_EFFECTS.CURRENT
   });

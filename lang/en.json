@@ -11,7 +11,8 @@
         "self": "Each user only for their own rolls"
       },
       "exitEffect": {
-        "current": "Default"
+        "current": "Default",
+        "frozenShatter": "Frozen shatter"
       }
     },
     "settings": {

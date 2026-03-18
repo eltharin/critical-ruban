@@ -32,7 +32,8 @@
       },
 
       "exitEffectChoices": {
-        "current": "Animation par défaut"
+        "current": "Animation par défaut",
+        "frozenShatter": "Glace brisée"
       }
     },
 
