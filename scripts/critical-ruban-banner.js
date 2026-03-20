@@ -743,8 +743,14 @@ class CritBanner {
   updateParticles(dtMS) {
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
+      if (!p?.sprite || p.sprite.destroyed) {
+        this.particles.splice(i, 1);
+        continue;
+      }
+
       p.age += dtMS;
       const t = clamp01(p.age / p.life);
+
       p.sprite.x += p.vx * (dtMS / 1000);
       p.sprite.y += p.vy * (dtMS / 1000);
       p.sprite.rotation += p.vr ?? 0;
@@ -754,19 +760,58 @@ class CritBanner {
       p.sprite.alpha = (p.startAlpha ?? 1) * (1 - easeInQuad(t));
 
       if (p.age >= p.life) {
-        p.sprite.destroy?.();
+        try {
+          p.sprite.parent?.removeChild(p.sprite);
+
+          // Optionnel mais propre pour un Graphics
+          if (typeof p.sprite.clear === "function") p.sprite.clear();
+
+          p.sprite.visible = false;
+          p.sprite.renderable = false;
+        } catch (err) {
+          console.warn(`${MODULE_ID} | Erreur nettoyage particule expirée :`, err);
+        }
+
         this.particles.splice(i, 1);
       }
     }
   }
 
   destroy() {
-    this.effect.onDestroy?.(this);
-    this.clearEffectLayers();
+    if (this._destroyed) return;
+    this._destroyed = true;
 
-    for (const p of this.particles) p.sprite.destroy?.();
+    try {
+      this.effect.onDestroy?.(this);
+    } catch (err) {
+      console.warn(`${MODULE_ID} | Erreur onDestroy effet :`, err);
+    }
+
+    for (const p of this.particles) {
+      try {
+        if (!p?.sprite || p.sprite.destroyed) continue;
+
+        p.sprite.parent?.removeChild(p.sprite);
+        if (typeof p.sprite.clear === "function") p.sprite.clear();
+        p.sprite.visible = false;
+        p.sprite.renderable = false;
+      } catch (err) {
+        console.warn(`${MODULE_ID} | Erreur nettoyage particule :`, err);
+      }
+    }
     this.particles = [];
 
-    this.root.destroy({ children: true });
+    try {
+      this.clearEffectLayers();
+    } catch (err) {
+      console.warn(`${MODULE_ID} | Erreur clearEffectLayers :`, err);
+    }
+
+    try {
+      this.root.parent?.removeChild(this.root);
+      this.root.destroy({ children: true });
+    } catch (err) {
+      console.warn(`${MODULE_ID} | Erreur destruction root :`, err);
+    }
   }
 }

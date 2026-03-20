@@ -24,8 +24,8 @@
   function drawFreezeOverlay(banner) {
     const g = new PIXI.Container();
 
-    const frostColor = mixHex(COLORS.ice, 0x1e3a5f, 0.55);
-    const deepFrost = 0x0b1f33;
+    const frostColor = mixHex(COLORS.ice, 0x1e3a5f, 0.80);
+    const deepFrost = 0x1E3A5F;
 
     const x = -banner.mainWidth / 2;
     const y = -banner.height / 2;
@@ -35,7 +35,7 @@
     const sideBulge = 10;
 
     const bodyBase = new PIXI.Graphics();
-    bodyBase.beginFill(deepFrost, 0.34);
+    bodyBase.beginFill(deepFrost, 0.50);
     bodyBase.moveTo(x + topInset, y + 2);
     bodyBase.bezierCurveTo(
       x - sideBulge + 2, y + h * 0.10,
@@ -56,7 +56,7 @@
     bodyBase.endFill();
 
     const bodyFrost = new PIXI.Graphics();
-    bodyFrost.beginFill(frostColor, 0.28);
+    bodyFrost.beginFill(frostColor, 0.50);
     bodyFrost.moveTo(x + topInset, y + 2);
     bodyFrost.bezierCurveTo(
       x - sideBulge + 2, y + h * 0.10,
@@ -100,7 +100,7 @@
       const tw = banner.tailWidth + 18;
 
       const tailBase = new PIXI.Graphics();
-      tailBase.beginFill(deepFrost, 0.30);
+      tailBase.beginFill(deepFrost, 0.50);
       tailBase.moveTo(sign * 4, -halfH + 4);
       tailBase.bezierCurveTo(
         sign * (tw * 0.18), -halfH + 1,
@@ -122,7 +122,7 @@
       tailBase.endFill();
 
       const tailFrost = new PIXI.Graphics();
-      tailFrost.beginFill(frostColor, 0.24);
+      tailFrost.beginFill(frostColor, 0.50);
       tailFrost.moveTo(sign * 4, -halfH + 4);
       tailFrost.bezierCurveTo(
         sign * (tw * 0.18), -halfH + 1,
