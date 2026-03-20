@@ -13,7 +13,8 @@
       "exitEffect": {
         "current": "Default",
         "frozenShatter": "Frozen shatter",
-        "crystalize": "Crystalize"
+        "crystalize": "Crystalize",
+        "vecnaSmoke": "Vecna"
       }
     },
     "settings": {

@@ -34,7 +34,8 @@
       "exitEffectChoices": {
         "current": "Animation par défaut",
         "frozenShatter": "Glace brisée",
-        "crystalize": "Cristallisation"
+        "crystalize": "Cristallisation",
+        "vecnaSmoke": "Vecna"
       }
     },
 
