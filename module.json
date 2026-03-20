@@ -18,6 +18,7 @@
     "scripts/effects/frozen-shatter-effect.js",
     "scripts/effects/crystalize-effect.js",
     "scripts/effects/vecna-effect.js",
+    "scripts/effects/vecna-runes-effect.js",
     "scripts/critical-ruban-banner.js",
     "scripts/critical-ruban-settings.js",
     "scripts/critical-ruban.js"
