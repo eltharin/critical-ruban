@@ -1,7 +1,6 @@
-console.log("critical-ruban | loading current-effect");
 (() => {
   globalThis.CriticalRubanEffects.registerRubanEffect({
-    id: EXIT_EFFECTS.CURRENT,
+    id: DEFAULT_EFFECT_ID,
     types: ["critical", "fumble"],
 
     setup(banner) {

@@ -55,8 +55,8 @@ function registerSettings() {
     scope: "client",
     config: true,
     type: String,
-    choices: getExitEffectChoices("critical"),
-    default: EXIT_EFFECTS.CURRENT
+    choices: globalThis.CriticalRubanEffects.getChoicesForType("critical"),
+    default: DEFAULT_EFFECT_ID
   });
 
   game.settings.register(MODULE_ID, "fumbleExitEffect", {
@@ -65,7 +65,7 @@ function registerSettings() {
     scope: "client",
     config: true,
     type: String,
-    choices: getExitEffectChoices("fumble"),
-    default: EXIT_EFFECTS.CURRENT
+    choices: globalThis.CriticalRubanEffects.getChoicesForType("fumble"),
+    default: DEFAULT_EFFECT_ID
   });
 }

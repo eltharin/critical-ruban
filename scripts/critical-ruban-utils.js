@@ -1,4 +1,5 @@
 const MODULE_ID = "critical-ruban";
+const DEFAULT_EFFECT_ID = "current";
 
 const BANNER_SLOTS = [
   { x: 0.50, y: 0.50, scale: 1.00, rotation: 0 },
@@ -8,29 +9,6 @@ const BANNER_SLOTS = [
   { x: 0.39, y: 0.76, scale: 0.92, rotation: -0.10 },
   { x: 0.67, y: 0.50, scale: 0.88, rotation: 0.12 }
 ];
-
-const EXIT_EFFECTS = {
-  CURRENT: "current",
-  FROZEN_SHATTER: "frozenShatter",
-  CRYSTALIZE: "crystalize"
-};
-
-const EXIT_TIMINGS = {
-  current: { startDelay: 3000, totalDuration: 900 },
-  frozenShatter: { startDelay: 3000, totalDuration: 1350 },
-  crystalize: { startDelay: 3000, totalDuration: 1000 }
-};
-
-const EXIT_EFFECTS_BY_TYPE = {
-  critical: [
-    EXIT_EFFECTS.CURRENT,
-    EXIT_EFFECTS.CRYSTALIZE
-  ],
-  fumble: [
-    EXIT_EFFECTS.CURRENT,
-    EXIT_EFFECTS.FROZEN_SHATTER
-  ]
-};
 
 const COLORS = {
   gold: 0xe6c45e,
@@ -43,19 +21,6 @@ const COLORS = {
   shadow: 0x000000,
   white: 0xffffff
 };
-
-function getExitEffectChoices(type) {
-  const list = EXIT_EFFECTS_BY_TYPE[type] ?? [EXIT_EFFECTS.CURRENT];
-  return list.reduce((acc, key) => {
-    acc[key] = game.i18n.localize(`critical-ruban.settings.exitEffectChoices.${key}`);
-    return acc;
-  }, {});
-}
-
-function getValidatedExitEffect(type, requested) {
-  const list = EXIT_EFFECTS_BY_TYPE[type] ?? [EXIT_EFFECTS.CURRENT];
-  return list.includes(requested) ? requested : EXIT_EFFECTS.CURRENT;
-}
 
 function gRoundRect(g, x, y, w, h, r, fillColor = null, fillAlpha = 1, lineWidth = 0, lineColor = 0x000000, lineAlpha = 1) {
   if (lineWidth > 0) g.lineStyle(lineWidth, lineColor, lineAlpha);
@@ -98,7 +63,7 @@ function gStar(g, x, y, points, outerRadius, innerRadius, fillColor = null, fill
   const pts = [];
   const step = Math.PI / points;
   for (let i = 0; i < points * 2; i++) {
-    const r = (i % 2 === 0) ? outerRadius : innerRadius;
+    const r = i % 2 === 0 ? outerRadius : innerRadius;
     const a = -Math.PI / 2 + i * step;
     pts.push(x + Math.cos(a) * r, y + Math.sin(a) * r);
   }
@@ -107,7 +72,7 @@ function gStar(g, x, y, points, outerRadius, innerRadius, fillColor = null, fill
 
 function playRubanSound(type) {
   if (!game.settings.get(MODULE_ID, "enableSound")) return;
-  console.log(`${MODULE_ID} | Playing sound for ${type}`);
+
   const customPath = game.settings.get(MODULE_ID, type === "fumble" ? "fumbleSoundPath" : "criticalSoundPath");
   const soundPath = customPath || `modules/${MODULE_ID}/assets/${type === "fumble" ? "fumble" : "critical"}.ogg`;
   const volume = (game.settings.get(MODULE_ID, "soundVolume") ?? 80) / 100;
@@ -140,6 +105,7 @@ function acquireBannerSlot() {
       chosen = i;
     }
   }
+
   slots.set(chosen, now + 5000);
   return chosen;
 }
@@ -151,12 +117,16 @@ function releaseBannerSlot(index) {
 function normalizeHexColor(value) {
   if (!value) return null;
   if (typeof value === "number") return `#${value.toString(16).padStart(6, "0")}`;
+
   const str = String(value).trim();
+
   if (/^#[0-9a-f]{6}$/i.test(str)) return str.toLowerCase();
+
   if (/^#[0-9a-f]{3}$/i.test(str)) {
     const [, r, g, b] = str;
     return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
   }
+
   const m = str.match(/rgb\s*\((\d+),\s*(\d+),\s*(\d+)\)/i);
   if (m) {
     const r = Number(m[1]).toString(16).padStart(2, "0");
@@ -164,6 +134,7 @@ function normalizeHexColor(value) {
     const b = Number(m[3]).toString(16).padStart(2, "0");
     return `#${r}${g}${b}`;
   }
+
   return null;
 }
 
@@ -182,15 +153,19 @@ function lightenHex(hex, amount) {
 
 function mixHex(a, b, amount) {
   amount = clamp01(amount);
+
   const ar = (a >> 16) & 0xff;
   const ag = (a >> 8) & 0xff;
   const ab = a & 0xff;
+
   const br = (b >> 16) & 0xff;
   const bg = (b >> 8) & 0xff;
   const bb = b & 0xff;
+
   const r = Math.round(lerp(ar, br, amount));
   const g = Math.round(lerp(ag, bg, amount));
   const bl = Math.round(lerp(ab, bb, amount));
+
   return (r << 16) | (g << 8) | bl;
 }
 
@@ -222,10 +197,6 @@ function easeInOutQuad(t) {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
-function easeInOutCubic(t) {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
-
 function easeOutBackSoft(t) {
   const c1 = 1.12;
   const c3 = c1 + 1;
@@ -238,15 +209,54 @@ if (!globalThis.CriticalRubanEffects) {
   globalThis.CriticalRubanEffects = {
     registerRubanEffect(effect) {
       if (!effect?.id) throw new Error("Ruban effect missing id");
-      registry.set(effect.id, effect);
+      if (!Array.isArray(effect.types) || effect.types.length === 0) {
+        throw new Error(`Ruban effect "${effect.id}" missing types`);
+      }
+
+      registry.set(effect.id, {
+        id: effect.id,
+        labelKey: effect.labelKey ?? `critical-ruban.settings.exitEffectChoices.${effect.id}`,
+        startDelay: effect.startDelay ?? 3000,
+        totalDuration: effect.totalDuration ?? 900,
+        setup: effect.setup ?? (() => {}),
+        onHold: effect.onHold ?? (() => {}),
+        onPrepareExit: effect.onPrepareExit ?? (() => {}),
+        onExit: effect.onExit ?? ((banner, t) => banner.updateCurrentExitBase(t)),
+        onDestroy: effect.onDestroy ?? (() => {}),
+        types: effect.types
+      });
     },
 
     getRubanEffect(id) {
-      return registry.get(id) ?? registry.get(EXIT_EFFECTS.CURRENT);
+      return registry.get(id) ?? registry.get(DEFAULT_EFFECT_ID);
     },
 
     getAllRubanEffects() {
       return Array.from(registry.values());
+    },
+
+    getEffectsForType(type) {
+      return Array.from(registry.values()).filter(effect => effect.types.includes(type));
+    },
+
+    getChoicesForType(type) {
+      return this.getEffectsForType(type).reduce((acc, effect) => {
+        acc[effect.id] = game.i18n.localize(effect.labelKey);
+        return acc;
+      }, {});
+    },
+
+    validateEffect(type, requested) {
+      const effects = this.getEffectsForType(type);
+      return effects.some(effect => effect.id === requested) ? requested : DEFAULT_EFFECT_ID;
+    },
+
+    getTiming(id) {
+      const effect = this.getRubanEffect(id);
+      return {
+        startDelay: effect?.startDelay ?? 3000,
+        totalDuration: effect?.totalDuration ?? 900
+      };
     }
   };
 }

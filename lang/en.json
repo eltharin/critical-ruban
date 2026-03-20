@@ -12,7 +12,8 @@
       },
       "exitEffect": {
         "current": "Default",
-        "frozenShatter": "Frozen shatter"
+        "frozenShatter": "Frozen shatter",
+        "crystalize": "Crystalize"
       }
     },
     "settings": {
