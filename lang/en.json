@@ -15,7 +15,9 @@
         "frozenShatter": "Frozen shatter",
         "crystalize": "Crystalize",
         "vecnaSmoke": "Vecna",
-        "vecnaRunes": "Vecna runes"
+        "vecnaRunes": "Vecna runes",
+        "voidCrystalFumble": "Void crystal",
+        "voidCrystalBloom": "Void crystal bloom"
       }
     },
     "settings": {
