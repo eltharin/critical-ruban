@@ -21,6 +21,8 @@
     "scripts/effects/vecna-runes-effect.js",
     "scripts/effects/void-crystal-effect.js",
     "scripts/effects/void-crystal-bloom-effect.js",
+    "scripts/effects/maddening-grip-effect.js",
+    "scripts/effects/demon-crown-shatter-effect.js",
     "scripts/critical-ruban-banner.js",
     "scripts/critical-ruban-settings.js",
     "scripts/critical-ruban.js"

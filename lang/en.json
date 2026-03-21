@@ -1,29 +1,9 @@
 {
   "critical-ruban": {
-    "text": {
-      "critical": "Critical Success",
-      "fumble": "Critical Failure"
-    },
-    "choices": {
-      "displayMode": {
-        "all": "Everyone",
-        "gm": "GM only",
-        "self": "Each user only for their own rolls"
-      },
-      "exitEffect": {
-        "current": "Default",
-        "frozenShatter": "Frozen shatter",
-        "snowVeil": "Snow veil",
-        "vecnaSmoke": "Vecna",
-        "vecnaRunes": "Vecna runes",
-        "voidCrystalFumble": "Void crystal",
-        "voidCrystalBloom": "Void crystal bloom"
-      }
-    },
     "settings": {
       "enableBanner": {
-        "name": "Show banners",
-        "hint": "Displays a banner on critical successes and critical failures."
+        "name": "Display banners",
+        "hint": "Displays a banner on critical successes and failures."
       },
       "enableSound": {
         "name": "Play sounds",
@@ -34,28 +14,40 @@
         "hint": "Volume of the module sounds."
       },
       "criticalSoundPath": {
-        "name": "Custom sound - critical success",
-        "hint": "Leave empty to play no custom sound."
+        "name": "Custom sound – critical success",
+        "hint": "Leave empty to use the default sound. Only the GM can choose a custom audio file."
       },
       "fumbleSoundPath": {
-        "name": "Custom sound - critical failure",
-        "hint": "Leave empty to play no custom sound."
+        "name": "Custom sound – critical failure",
+        "hint": "Leave empty to use the default sound. Only the GM can choose a custom audio file."
       },
-      "displayMode": {
-        "name": "Display",
-        "hint": "Choose who can see the banners."
-      },
-      "bannerDuration": {
-        "name": "Display duration",
-        "hint": "Banner display duration in milliseconds."
-      },
+
       "criticalExitEffect": {
-        "name": "Exit effect - critical success",
-        "hint": "Kept for a future version."
+        "name": "Exit effect – critical success",
+        "hint": "Selects the banner disappearance animation for a critical success."
       },
       "fumbleExitEffect": {
-        "name": "Exit effect - critical failure",
-        "hint": "Kept for a future version."
+        "name": "Exit effect – critical failure",
+        "hint": "Selects the banner disappearance animation for a critical failure."
+      },
+
+      "exitEffectChoices": {
+        "current": "Default animation",
+        "frozenShatter": "Shattered ice",
+        "snowVeil": "Snow veil",
+        "vecnaSmoke": "Vecna smoke",
+        "vecnaRunes": "Vecna runes",
+        "voidCrystalFumble": "Void crystals",
+        "voidCrystalBloom": "Void bloom",
+        "maddeningGrip": "Maddening grip",
+        "demonCrownShatter": "Shattered demon crown"
+      }
+    },
+
+    "ruban": {
+      "label": {
+        "criticalSuccess": "Critical success",
+        "criticalFailure": "Critical failure"
       }
     }
   }

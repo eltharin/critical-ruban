@@ -350,7 +350,10 @@
 				driftX: Math.sign(x || 1) * randomBetween(1.0, 6.0),
 				driftY: randomBetween(-3.0, 3.0),
 				rotSpeed: randomBetween(0.0015, 0.0050),
-				growthBias: randomBetween(0.9, 1.2)
+				growthBias: randomBetween(0.9, 1.2),
+				burstVX: 0,
+				burstVY: 0,
+				burstSpin: 0
 			});
 		}
 
@@ -446,6 +449,116 @@
 		}
 	}
 
+	function getVoidShatterPolygons(banner) {
+		const bodyL = -banner.mainWidth / 2;
+		const totalL = -banner.totalWidth / 2;
+		const totalR = banner.totalWidth / 2;
+		const yT = -banner.height / 2;
+		const yB = banner.height / 2;
+		const bx = (r) => bodyL + banner.mainWidth * r;
+
+		return [
+			[totalL + 10, -24, totalL + 30, -18, totalL + 40, -2, totalL + 16, 4],
+			[totalL + 16, 4, totalL + 40, -2, totalL + 28, 18, totalL + 8, 22],
+
+			[bx(0.02), yT + 8, bx(0.14), yT + 6, bx(0.12), -12, bx(0.02), -4],
+			[bx(0.14), yT + 6, bx(0.28), yT + 6, bx(0.26), -10, bx(0.12), -12],
+			[bx(0.28), yT + 6, bx(0.42), yT + 7, bx(0.40), -8, bx(0.26), -10],
+			[bx(0.42), yT + 7, bx(0.58), yT + 7, bx(0.56), -8, bx(0.40), -8],
+			[bx(0.58), yT + 7, bx(0.72), yT + 8, bx(0.70), -6, bx(0.56), -8],
+			[bx(0.72), yT + 8, bx(0.86), yT + 8, bx(0.84), -2, bx(0.70), -6],
+			[bx(0.86), yT + 8, bx(0.98), yT + 10, bx(0.96), 2, bx(0.84), -2],
+
+			[bx(0.02), -4, bx(0.12), -12, bx(0.11), 10, bx(0.02), 10],
+			[bx(0.12), -12, bx(0.26), -10, bx(0.25), 10, bx(0.11), 10],
+			[bx(0.26), -10, bx(0.40), -8, bx(0.39), 10, bx(0.25), 10],
+			[bx(0.40), -8, bx(0.56), -8, bx(0.55), 10, bx(0.39), 10],
+			[bx(0.56), -8, bx(0.70), -6, bx(0.69), 10, bx(0.55), 10],
+			[bx(0.70), -6, bx(0.84), -2, bx(0.83), 12, bx(0.69), 10],
+			[bx(0.84), -2, bx(0.96), 2, bx(0.95), 12, bx(0.83), 12],
+
+			[bx(0.02), 10, bx(0.11), 10, bx(0.10), yB - 10, bx(0.01), yB - 8],
+			[bx(0.11), 10, bx(0.25), 10, bx(0.24), yB - 8, bx(0.10), yB - 10],
+			[bx(0.25), 10, bx(0.39), 10, bx(0.38), yB - 8, bx(0.24), yB - 8],
+			[bx(0.39), 10, bx(0.55), 10, bx(0.54), yB - 8, bx(0.38), yB - 8],
+			[bx(0.55), 10, bx(0.69), 10, bx(0.68), yB - 8, bx(0.54), yB - 8],
+			[bx(0.69), 10, bx(0.83), 12, bx(0.82), yB - 6, bx(0.68), yB - 8],
+			[bx(0.83), 12, bx(0.96), 10, bx(0.95), yB - 4, bx(0.82), yB - 6],
+
+			[totalR - 10, -24, totalR - 30, -18, totalR - 40, -2, totalR - 16, 4],
+			[totalR - 16, 4, totalR - 40, -2, totalR - 28, 18, totalR - 8, 22]
+		];
+	}
+
+	function createVoidShatterShards(banner) {
+		const existing = banner.getEffectLayer("voidRibbonShards");
+		if (existing?._shards?.length) return existing._shards;
+
+		const snapshot = banner.captureBodyGroupTexture();
+		if (!snapshot?.texture || !snapshot?.bounds) return [];
+
+		const layer = banner.getEffectLayer("voidRibbonShards") ?? new PIXI.Container();
+
+		if (!banner.getEffectLayer("voidRibbonShards")) {
+			banner.addEffectLayer("voidRibbonShards", layer, {
+				parent: "fx",
+				alpha: 1,
+				visible: true
+			});
+		}
+
+		layer.removeChildren();
+		layer.visible = true;
+		layer.alpha = 1;
+
+		const pieces = [];
+		const polys = getVoidShatterPolygons(banner);
+
+		for (const pts of polys) {
+			const { shard, cx, cy } = banner.createTexturedShard(pts, snapshot.texture, snapshot.bounds);
+			layer.addChild(shard);
+
+			const angle = Math.atan2(cy, cx) + randomBetween(-0.45, 0.45);
+			const speed = randomBetween(180, 420);
+			const spin = randomBetween(-0.16, 0.16);
+
+			pieces.push({
+				sprite: shard,
+				vx: Math.cos(angle) * speed,
+				vy: Math.sin(angle) * speed - randomBetween(40, 140),
+				gravity: randomBetween(280, 520),
+				spin,
+				delay: randomBetween(0, 20)
+			});
+		}
+
+		layer._shards = pieces;
+		layer._snapshot = snapshot.texture;
+		return pieces;
+	}
+
+	function resetVoidRibbonShards(banner) {
+		const shardLayer = banner.getEffectLayer("voidRibbonShards");
+		if (!shardLayer) return;
+
+		for (const s of shardLayer._shards ?? []) {
+			try {
+				s.sprite.destroy?.();
+			} catch (_err) {}
+		}
+
+		shardLayer.removeChildren();
+		shardLayer._shards = [];
+		if (shardLayer._snapshot) {
+			try {
+				shardLayer._snapshot.destroy(true);
+			} catch (_err) {}
+		}
+		shardLayer._snapshot = null;
+		shardLayer.visible = false;
+		shardLayer.alpha = 1;
+	}
+
 	globalThis.CriticalRubanEffects.registerRubanEffect({
 		id: EFFECT_ID,
 		types: ["fumble"],
@@ -471,6 +584,12 @@
 			banner.addEffectLayer("crystalField", createCrystalField(banner), {
 				parent: "fx",
 				alpha: 1
+			});
+
+			banner.addEffectLayer("voidRibbonShards", new PIXI.Container(), {
+				parent: "fx",
+				alpha: 1,
+				visible: false
 			});
 		},
 
@@ -521,6 +640,8 @@
 			const veins = banner.getEffectLayer("veinLines");
 			const flash = banner.getEffectLayer("pulseFlash");
 
+			resetVoidRibbonShards(banner);
+
 			if (crystals) {
 				crystals.visible = true;
 				crystals.alpha = 1;
@@ -531,10 +652,12 @@
 			if (veins) veins.alpha = 0.26;
 			if (flash) flash.alpha = 0;
 
+			banner.bodyGroup.visible = true;
+
 			spawnCrystalDust(banner, 14);
 		},
 
-		onExit(banner, t) {
+		onExit(banner, t, dtMS) {
 			const crystals = banner.getEffectLayer("crystalField");
 			const overlay = banner.getEffectLayer("corruptionOverlay");
 			const veins = banner.getEffectLayer("veinLines");
@@ -595,82 +718,109 @@
 				banner.motion.rotation = banner.baseRotation + randomBetween(-0.015, 0.015);
 
 				if (crystals) {
-					updateCrystalField(crystals, 1, banner.elapsed, lerp(1.55, 1.78, e));
+					updateCrystalField(crystals, 1, banner.elapsed, lerp(1.55, 1.90, e));
 
 					for (const entry of crystals._entries ?? []) {
 						if (entry.sprite.alpha <= 0.01) continue;
 
-						const pulse = 1 + Math.sin(banner.elapsed * 0.018 + entry.baseX * 0.03) * 0.08;
+						const pulse = 1 + Math.sin(banner.elapsed * 0.018 + entry.baseX * 0.03) * 0.10;
 						entry.sprite.scale.x *= pulse;
 						entry.sprite.scale.y *= pulse;
-						entry.sprite.rotation += entry.rotSpeed * 3.2;
+						entry.sprite.rotation += entry.rotSpeed * 3.6;
 					}
 				}
 
-				if (overlay) overlay.alpha = lerp(0.76, 0.92, e);
-				if (veins) veins.alpha = lerp(0.54, 0.68, e);
-				if (flash) flash.alpha = Math.sin(e * Math.PI * 2) * 0.10;
+				if (overlay) overlay.alpha = lerp(0.76, 0.96, e);
+				if (veins) veins.alpha = lerp(0.54, 0.78, e);
+				if (flash) flash.alpha = Math.sin(e * Math.PI * 2) * 0.14;
 
-				banner.motion.tint = mixHex(CRYSTAL_MID, CRYSTAL_BRIGHT, e * 0.30);
+				banner.motion.tint = mixHex(CRYSTAL_MID, CRYSTAL_BRIGHT, e * 0.34);
 
-				if (Math.random() < 0.34) spawnCrystalDust(banner, 3);
+				if (Math.random() < 0.38) spawnCrystalDust(banner, 3);
 				return;
 			}
 
 			const e = clamp01((t - 0.78) / 0.22);
+			let ribbonShards = banner.getEffectLayer("voidRibbonShards");
+
+			if (!ribbonShards?._shards?.length) {
+				createVoidShatterShards(banner);
+				ribbonShards = banner.getEffectLayer("voidRibbonShards");
+
+				banner.bodyGroup.visible = false;
+
+				if (overlay) overlay.visible = false;
+				if (veins) veins.visible = false;
+				if (flash) flash.visible = false;
+
+				if (crystals) {
+					for (const entry of crystals._entries ?? []) {
+						if (entry.sprite.alpha <= 0.01) continue;
+
+						const angle = Math.atan2(entry.baseY, entry.baseX) + randomBetween(-0.9, 0.9);
+						const speed = randomBetween(140, 360);
+
+						entry.burstVX = Math.cos(angle) * speed;
+						entry.burstVY = Math.sin(angle) * speed - randomBetween(30, 120);
+						entry.burstSpin = randomBetween(-0.18, 0.18);
+					}
+				}
+
+				spawnCrystalDust(banner, 28);
+			}
 
 			banner.root.alpha = 1;
-			banner.root.position.set(
-				banner.baseX + lerp(0, 10, e),
-				banner.baseY + lerp(0, -6, e)
-			);
-			banner.motion.scale.set(banner.baseScale * lerp(1.05, 1.00, e));
-			banner.motion.rotation = banner.baseRotation + lerp(0, 0.02, e);
+			banner.root.position.set(banner.baseX, banner.baseY);
+			banner.motion.scale.set(banner.baseScale);
+			banner.motion.rotation = banner.baseRotation;
 
-			banner.body.alpha = lerp(1, 0.03, e);
-			banner.leftTail.alpha = lerp(1, 0.03, e);
-			banner.rightTail.alpha = lerp(1, 0.03, e);
-			banner.badge.alpha = lerp(1, 0.00, e);
-			banner.text.alpha = lerp(1, 0.00, e);
-			banner.innerGlow.alpha = lerp(0.16, 0, e);
-			banner.topEdge.alpha = lerp(1, 0.00, e);
-			banner.bottomEdge.alpha = lerp(1, 0.00, e);
-			banner.shine.alpha = 0;
+			const frameDtMS = dtMS ?? banner.lastDtMS ?? 16.67;
+			const dt = frameDtMS / 1000;
 
-			if (overlay) overlay.alpha = lerp(0.92, 0.00, e);
-			if (veins) veins.alpha = lerp(0.68, 0.00, e);
-			if (flash) flash.alpha = 0;
+			if (ribbonShards?._shards) {
+				ribbonShards.visible = true;
+				ribbonShards.alpha = 1;
 
-			if (crystals) {
-				crystals.visible = true;
-				crystals.alpha = 1;
+				for (const s of ribbonShards._shards) {
+					if (s.delay > 0) {
+						s.delay -= frameDtMS;
+						continue;
+					}
 
-				for (const entry of crystals._entries ?? []) {
-					if (entry.sprite.alpha <= 0.01) continue;
-
-					const stayScale = lerp(
-						entry.targetScale * 1.78 * entry.growthBias,
-						entry.targetScale * 1.62 * entry.growthBias,
-						e
-					);
-
-					entry.sprite.scale.set(Math.max(0.01, stayScale));
-					entry.sprite.alpha = Math.max(0.82, entry.targetAlpha * 0.96);
-
-					const dirX = Math.sign(entry.baseX || 1);
-					const dirY = Math.sign(entry.baseY || 1);
-
-					entry.sprite.x += dirX * 0.18;
-					entry.sprite.y += dirY * 0.08;
-					entry.sprite.rotation += entry.rotSpeed * 2.2;
+					s.vy += s.gravity * dt;
+					s.sprite.x += s.vx * dt;
+					s.sprite.y += s.vy * dt;
+					s.sprite.rotation += s.spin;
+					s.sprite.alpha = 1 - easeInQuad(e) * 0.18;
 				}
 			}
 
-			if (Math.random() < 0.44) spawnCrystalDust(banner, 3);
+			if (crystals) {
+				for (const entry of crystals._entries ?? []) {
+					if (entry.sprite.alpha <= 0.01) continue;
+
+					entry.burstVY += 420 * dt;
+					entry.sprite.x += entry.burstVX * dt;
+					entry.sprite.y += entry.burstVY * dt;
+					entry.sprite.rotation += entry.burstSpin;
+
+					const burstScale = lerp(
+						entry.targetScale * 1.90 * entry.growthBias,
+						entry.targetScale * 0.92,
+						e
+					);
+
+					entry.sprite.scale.set(Math.max(0.01, burstScale));
+					entry.sprite.alpha = lerp(Math.max(0.82, entry.targetAlpha), 0, e);
+				}
+			}
+
+			if (Math.random() < 0.60) spawnCrystalDust(banner, 4);
 		},
 
 		onDestroy(banner) {
 			banner.motion.tint = 0xffffff;
+			resetVoidRibbonShards(banner);
 		}
 	});
 })();
