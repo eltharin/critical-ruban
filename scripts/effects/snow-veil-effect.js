@@ -1,5 +1,5 @@
 (() => {
-  const EFFECT_ID = "crystalize";
+  const EFFECT_ID = "snowVeil";
 
   function makeBannerBodyPath(banner, inset = 0) {
     const x = -banner.mainWidth / 2 + inset;

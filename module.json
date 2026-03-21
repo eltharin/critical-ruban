@@ -16,7 +16,7 @@
     "scripts/critical-ruban-utils.js",
     "scripts/effects/current-effect.js",
     "scripts/effects/frozen-shatter-effect.js",
-    "scripts/effects/crystalize-effect.js",
+    "scripts/effects/snow-veil-effect.js",
     "scripts/effects/vecna-effect.js",
     "scripts/effects/vecna-runes-effect.js",
     "scripts/effects/void-crystal-effect.js",
