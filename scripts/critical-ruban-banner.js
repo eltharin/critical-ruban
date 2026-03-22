@@ -902,8 +902,10 @@ function destroyBannerPositionPreview() {
   }
 
   try {
-    if (preview.manager && preview.banner) {
-      preview.manager.removeBanner(preview.banner);
+    if (preview.manager && Array.isArray(preview.banners)) {
+      for (const banner of preview.banners) {
+        preview.manager.removeBanner(banner);
+      }
     }
   } catch (err) {
     console.warn(`${MODULE_ID} | Erreur suppression ruban preview :`, err);
@@ -937,25 +939,30 @@ async function openPixiBannerPositionPicker() {
     return;
   }
 
+  const previews = BANNER_SLOTS.map((slot, index) => {
   const preview = new CritBanner({
-    slotIndex: 0,
-    type: "critical",
-    label: game.i18n.localize("critical-ruban.ruban.label.criticalSuccess"),
-    name: game.i18n.localize("critical-ruban.positionPicker.previewName"),
-    color: game.user?.color?.css ?? game.user?.color?.toString?.() ?? game.user?.color ?? "#8b0000",
-    exitEffect: DEFAULT_EFFECT_ID
+      slotIndex: index,
+      type: index === 0 ? "critical" : "fumble",
+      label: index === 0
+        ? game.i18n.localize("critical-ruban.ruban.label.criticalSuccess")
+        : game.i18n.localize("critical-ruban.ruban.label.criticalFailure"),
+      name: `${game.i18n.localize("critical-ruban.positionPicker.previewName")} ${index + 1}`,
+      color: game.user?.color?.css ?? game.user?.color?.toString?.() ?? game.user?.color ?? "#8b0000",
+      exitEffect: DEFAULT_EFFECT_ID
+    });
+
+    preview.isPreview = true;
+    preview.state = "hold";
+    preview.stateTime = 0;
+    preview.elapsed = 0;
+    preview.enterDuration = 0;
+    preview.holdDuration = Number.MAX_SAFE_INTEGER;
+    preview.exitDuration = 0;
+    preview.done = false;
+
+    manager.addBanner(preview);
+    return preview;
   });
-
-  preview.isPreview = true;
-  preview.state = "hold";
-  preview.stateTime = 0;
-  preview.elapsed = 0;
-  preview.enterDuration = 0;
-  preview.holdDuration = Number.MAX_SAFE_INTEGER;
-  preview.exitDuration = 0;
-  preview.done = false;
-
-  manager.addBanner(preview);
 
   const screen = canvas?.app?.renderer?.screen ?? {
     width: window.innerWidth,
@@ -970,13 +977,11 @@ async function openPixiBannerPositionPicker() {
     y: savedY ?? 0.5
   };
 
-  preview.root.alpha = 1;
-  preview.motion.rotation = preview.baseRotation;
-  preview.motion.scale.set(preview.baseScale);
-
-  preview.baseX = screen.width * state.x;
-  preview.baseY = screen.height * state.y;
-  preview.root.position.set(preview.baseX, preview.baseY);
+  for (const preview of previews) {
+    preview.root.alpha = 1;
+    preview.motion.rotation = preview.baseRotation;
+    preview.motion.scale.set(preview.baseScale);
+  }
 
   const hiddenWindows = hideFoundryWindowsForBannerPlacement();
 
@@ -1014,9 +1019,21 @@ async function openPixiBannerPositionPicker() {
     state.x = clampPreview(clientX / window.innerWidth);
     state.y = clampPreview(clientY / window.innerHeight);
 
-    preview.baseX = screen.width * state.x;
-    preview.baseY = screen.height * state.y;
-    preview.root.position.set(preview.baseX, preview.baseY);
+    const anchorX = screen.width * state.x;
+    const anchorY = screen.height * state.y;
+    const userScale = (game.settings.get(MODULE_ID, "bannerScale") ?? 100) / 100;
+
+    for (let i = 0; i < previews.length; i++) {
+      const preview = previews[i];
+      const slot = BANNER_SLOTS[i] ?? BANNER_SLOTS[0];
+
+      const offsetX = (slot.x - 0.5) * screen.width * userScale;
+      const offsetY = (slot.y - 0.5) * screen.height * userScale;
+
+      preview.baseX = anchorX + offsetX;
+      preview.baseY = anchorY + offsetY;
+      preview.root.position.set(preview.baseX, preview.baseY);
+    }
   }
     const onPointerMove = (ev) => {
     updatePreviewFromClient(ev.clientX, ev.clientY);
@@ -1056,7 +1073,7 @@ async function openPixiBannerPositionPicker() {
 
   globalThis.__critBannerPositionPreview = {
     manager,
-    banner: preview,
+    banners: previews,
     overlay,
     hiddenWindows,
     cleanup: () => {
