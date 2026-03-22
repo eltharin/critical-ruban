@@ -57,8 +57,17 @@
         "name": "Banner position",
         "label": "Configure",
         "hint": "Opens the visual banner placement tool."
-      },
-      "positionPicker": {
+      }
+    },
+
+    "ruban": {
+      "label": {
+        "criticalSuccess": "Critical success",
+        "criticalFailure": "Critical failure"
+      }
+    },
+
+    "positionPicker": {
         "title": "Banner position",
         "description": "Place the banner on screen using a real preview.",
         "pickButton": "Choose position",
@@ -70,13 +79,5 @@
         "previewName": "Preview",
         "managerError": "Unable to initialize the banner manager."
       }
-    },
-
-    "ruban": {
-      "label": {
-        "criticalSuccess": "Critical success",
-        "criticalFailure": "Critical failure"
-      }
-    }
   }
 }

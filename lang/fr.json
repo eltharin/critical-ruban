@@ -57,9 +57,17 @@
         "name": "Position du ruban",
         "label": "Configurer",
         "hint": "Ouvre l'outil de placement visuel du ruban."
-      },
+      }
+    },
 
-      "positionPicker": {
+    "ruban": {
+      "label": {
+        "criticalSuccess": "Réussite critique",
+        "criticalFailure": "Échec critique"
+      }
+    },
+
+    "positionPicker": {
         "title": "Position du ruban",
         "description": "Place le ruban à l'écran avec un aperçu réel.",
         "pickButton": "Choisir la position",
@@ -71,13 +79,5 @@
         "previewName": "Prévisualisation",
         "managerError": "Impossible d'initialiser le gestionnaire de rubans."
       }
-    },
-
-    "ruban": {
-      "label": {
-        "criticalSuccess": "Réussite critique",
-        "criticalFailure": "Échec critique"
-      }
-    }
   }
 }

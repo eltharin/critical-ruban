@@ -102,12 +102,53 @@ function registerSettings() {
     default: false
   });
 
-  game.settings.registerMenu(MODULE_ID, "pickPositionMenu", {
+  game.settings.register(MODULE_ID, "pickPositionButton", {
     name: game.i18n.localize("critical-ruban.settings.pickPosition.name"),
-    label: game.i18n.localize("critical-ruban.settings.pickPosition.label"),
     hint: game.i18n.localize("critical-ruban.settings.pickPosition.hint"),
-    icon: "fas fa-crosshairs",
-    type: BannerPositionPicker,
-    restricted: false
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: () => {}
   });
 }
+
+Hooks.on("renderSettingsConfig", (app, html) => {
+  const settingInput = html.querySelector(`[name="${MODULE_ID}.pickPositionButton"]`);
+  if (!settingInput) return;
+
+  const formGroup = settingInput.closest(".form-group");
+  if (!formGroup) return;
+
+  const existingButton = formGroup.querySelector(".crit-ruban-pick-btn");
+  if (existingButton) return;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "crit-ruban-pick-btn";
+  button.innerHTML = `
+    <i class="fas fa-crosshairs"></i>
+    ${game.i18n.localize("critical-ruban.settings.pickPosition.label")}
+  `;
+
+  button.addEventListener("click", async (event) => {
+    event.preventDefault();
+
+    // ferme la fenêtre des settings avant le mode placement
+    await app.close();
+
+    // laisse le temps au DOM de se fermer proprement
+    requestAnimationFrame(() => {
+      openPixiBannerPositionPicker();
+    });
+  });
+
+  settingInput.remove();
+
+  const label = formGroup.querySelector("label");
+  if (label) {
+    label.insertAdjacentElement("afterend", button);
+  } else {
+    formGroup.appendChild(button);
+  }
+});

@@ -1,46 +1,55 @@
-class BannerPositionPicker extends FormApplication {
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: "critical-ruban-position-picker",
-      title: game.i18n.localize("critical-ruban.positionPicker.title"),
-      template: `modules/${MODULE_ID}/templates/banner-position-picker.hbs`,
-      width: 430,
-      closeOnSubmit: false,
-      submitOnChange: false,
-      submitOnClose: false,
-      resizable: false
-    });
-  }
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-  async getData() {
+class BannerPositionPicker extends HandlebarsApplicationMixin(ApplicationV2) {
+  static DEFAULT_OPTIONS = {
+    id: "critical-ruban-position-picker",
+    tag: "form",
+    window: {
+      title: "critical-ruban.positionPicker.title"
+    },
+    position: {
+      width: 430
+    },
+    actions: {
+      pick: BannerPositionPicker.onPick,
+      reset: BannerPositionPicker.onReset
+    }
+  };
+
+  static PARTS = {
+    main: {
+      template: `modules/${MODULE_ID}/templates/banner-position-picker.hbs`
+    }
+  };
+
+  async _prepareContext() {
     return {
       useCustomPos: game.settings.get(MODULE_ID, "useCustomPos") ?? false
     };
   }
 
-  activateListeners(html) {
-    super.activateListeners(html);
+  static async onPick(event, target) {
+    event.preventDefault();
+    const app = target.closest(".application")?.app ?? null;
+    if (app) await app.close();
+    await openPixiBannerPositionPicker();
+  }
 
-    html.find("[data-action='pick']").on("click", async (ev) => {
-      ev.preventDefault();
-      await this.close();
-      await openPixiBannerPositionPicker();
-    });
+  static async onReset(event, target) {
+    event.preventDefault();
 
-    html.find("[data-action='reset']").on("click", async (ev) => {
-      ev.preventDefault();
-      destroyBannerPositionPreview();
+    destroyBannerPositionPreview();
 
-      await game.settings.set(MODULE_ID, "bannerPosX", null);
-      await game.settings.set(MODULE_ID, "bannerPosY", null);
-      await game.settings.set(MODULE_ID, "useCustomPos", false);
+    await game.settings.set(MODULE_ID, "bannerPosX", null);
+    await game.settings.set(MODULE_ID, "bannerPosY", null);
+    await game.settings.set(MODULE_ID, "useCustomPos", false);
 
-      ui.notifications.info(
-        game.i18n.localize("critical-ruban.positionPicker.resetNotification")
-      );
+    ui.notifications.info(
+      game.i18n.localize("critical-ruban.positionPicker.resetNotification")
+    );
 
-      this.render(true);
-    });
+    const app = target.closest(".application")?.app ?? null;
+    if (app) app.render(true);
   }
 
   async close(options) {
