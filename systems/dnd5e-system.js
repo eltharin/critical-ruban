@@ -24,8 +24,7 @@ class CriticalRubanSystemDnd5e extends globalThis.CriticalRubanBaseSystem {
         : game.i18n.localize("critical-ruban.ruban.label.criticalSuccess"),
       nameActor: message.speaker?.alias || game.user?.name || "Inconnu",
       color:
-        user?.color?.css ??
-        user?.color?.toString?.() ??
+        user?.color?.css ??        user?.color?.toString?.() ??
         user?.color ??
         "#8b0000",
       effect: null
