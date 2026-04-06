@@ -12,23 +12,7 @@
     "minimum": "13",
     "verified": "13"
   },
-  "scripts": [
-    "scripts/critical-ruban-utils.js",
-    "scripts/effects/current-effect.js",
-    "scripts/effects/frozen-shatter-effect.js",
-    "scripts/effects/snow-veil-effect.js",
-    "scripts/effects/vecna-effect.js",
-    "scripts/effects/vecna-runes-effect.js",
-    "scripts/effects/void-crystal-effect.js",
-    "scripts/effects/void-crystal-bloom-effect.js",
-    "scripts/effects/maddening-grip-effect.js",
-    "scripts/effects/demon-crown-shatter-effect.js",
-    "scripts/critical-ruban-banner.js",
-    "scripts/critical-ruban-settings.js",
-    "scripts/banner-position-picker.js",
-    "systems/base-system.js",
-    "systems/system-registry.js",
-    "systems/dnd5e-system.js",
+  "esmodules": [
     "scripts/critical-ruban.js"
   ],
   "languages": [

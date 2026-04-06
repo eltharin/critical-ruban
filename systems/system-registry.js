@@ -1,57 +1,81 @@
-function initCriticalRubanSystems() {
-  if (globalThis.CriticalRubanSystemRegistry) return;
+import { CriticalRubanBaseSystem } from "./base-system.js";
+import { CriticalRubanSystemDnd5e } from "./dnd5e-system.js";
+import { CriticalRubanSystemTest } from "./test-system.js";
 
-  const registry = new Map();
+export class SystemRegistry {
+  constructor() {
+    this.registry = new Map();
+  }
 
-  globalThis.CriticalRubanSystemRegistry = {
-    register(SystemClass) {
-      if (typeof SystemClass !== "function") {
-        throw new Error("Critical Ruban | registerSystem attend une classe.");
-      }
-
-      const systemId = SystemClass.systemId;
-      if (!systemId || typeof systemId !== "string") {
-        throw new Error("Critical Ruban | La classe système doit définir static systemId.");
-      }
-
-      if (!(SystemClass.prototype instanceof globalThis.CriticalRubanBaseSystem)) {
-        throw new Error(`Critical Ruban | "${systemId}" doit étendre CriticalRubanBaseSystem.`);
-      }
-
-      registry.set(systemId, SystemClass);
-    },
-
-    unregister(systemId) {
-      registry.delete(systemId);
-    },
-
-    get(systemId = game.system.id) {
-      const SystemClass = registry.get(systemId);
-      return SystemClass ? new SystemClass() : null;
-    },
-
-    has(systemId = game.system.id) {
-      return registry.has(systemId);
-    },
-
-    list() {
-      return Array.from(registry.keys());
+  register(SystemClass) {
+    if (typeof SystemClass !== "function") {
+      throw new Error("Critical Ruban | registerSystem attend une classe.");
     }
-  };
+
+    const systemId = SystemClass.systemId;
+    if (!systemId || typeof systemId !== "string") {
+      throw new Error("Critical Ruban | La classe système doit définir static systemId.");
+    }
+
+    if (!(SystemClass.prototype instanceof CriticalRubanBaseSystem)) {
+      throw new Error(`Critical Ruban | "${systemId}" doit étendre CriticalRubanBaseSystem.`);
+    }
+
+    this.registry.set(systemId, SystemClass);
+  }
+
+  unregister(systemId) {
+    this.registry.delete(systemId);
+  }
+
+  get(systemId = game.system.id) {
+    const SystemClass = this.registry.get(systemId);
+    return SystemClass ? new SystemClass() : null;
+  }
+
+  has(systemId = game.system.id) {
+    return this.registry.has(systemId);
+  }
+
+  list() {
+    return Array.from(this.registry.keys());
+  }
 }
 
-function exposeCriticalRubanApi() {
-  globalThis.CriticalRuban = {
-    show: showBannerManually,
-    showCritical: (name, color) => showBannerManually({ type: "critical", name, color }),
-    showFumble: (name, color) => showBannerManually({ type: "fumble", name, color }),
+let criticalRubanSystemRegistry = null;
 
-    BaseSystem: globalThis.CriticalRubanBaseSystem,
+export function initCriticalRubanSystems() {
+  if (criticalRubanSystemRegistry) return;
+  criticalRubanSystemRegistry = new SystemRegistry();
+}
 
-    registerSystem: (SystemClass) => globalThis.CriticalRubanSystemRegistry.register(SystemClass),
-    unregisterSystem: (systemId) => globalThis.CriticalRubanSystemRegistry.unregister(systemId),
-    getSystem: () => globalThis.CriticalRubanSystemRegistry.get(),
-    hasSystem: (systemId) => globalThis.CriticalRubanSystemRegistry.has(systemId),
-    listSystems: () => globalThis.CriticalRubanSystemRegistry.list()
+export function exposeCriticalRubanApi(criticalRuban) {
+  if (!criticalRuban) {
+    throw new Error("Critical Ruban | exposeCriticalRubanApi requires the CriticalRuban class reference.");
+  }
+
+  const api = {
+    show: (options) => criticalRuban.showBannerManually(options),
+    showCritical: (name, color) => criticalRuban.showBannerManually({ type: "critical", name, color }),
+    showFumble: (name, color) => criticalRuban.showBannerManually({ type: "fumble", name, color }),
+
+    BaseSystem: CriticalRubanBaseSystem,
+
+    registerSystem: (SystemClass) => criticalRubanSystemRegistry.register(SystemClass),
+    unregisterSystem: (systemId) => criticalRubanSystemRegistry.unregister(systemId),
+    getSystem: () => criticalRubanSystemRegistry.get(),
+    hasSystem: (systemId) => criticalRubanSystemRegistry.has(systemId),
+    listSystems: () => criticalRubanSystemRegistry.list()
   };
+
+  return api;
+}
+
+export function registerNativeCriticalRubanSystems() {
+  if (!criticalRubanSystemRegistry) {
+    initCriticalRubanSystems();
+  }
+
+  criticalRubanSystemRegistry.register(CriticalRubanSystemDnd5e);
+  criticalRubanSystemRegistry.register(CriticalRubanSystemTest);
 }

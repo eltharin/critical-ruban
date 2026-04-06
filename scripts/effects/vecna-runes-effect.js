@@ -1,7 +1,14 @@
-(() => {
-  const EFFECT_ID = "vecnaRunes";
+import { BaseRubanEffect } from "./base-effect.js";
+import { CriticalRubanUtils } from "../critical-ruban-utils.js";
 
-  const VECNA = {
+
+export class VecnaRunesEffect extends BaseRubanEffect {
+	static effectId = "vecnaRunes";
+	static effectTypes = ["critical"];
+	static startDelay = 3000;
+	static totalDuration = 1250;
+
+  static vars = {
     ink: 0x09060f,
     inkDeep: 0x04020a,
     purple: 0x3b1a78,
@@ -10,7 +17,185 @@
     pale: 0xd8c4ff
   };
 
-  function makeBannerBodyPath(banner, inset = 0) {
+	setup(banner) {
+		banner.addEffectLayer("vecnaRuneVeil", this.drawRuneVeil(banner), {
+			parent: "bodyGroup",
+			alpha: 0
+		});
+
+		banner.addEffectLayer("vecnaRuneMarks", this.drawInnerMarkings(banner), {
+			parent: "bodyGroup",
+			alpha: 0
+		});
+
+		banner.addEffectLayer("vecnaRuneOrbit", this.buildRuneOrbitLayer(banner), {
+			parent: "fx",
+			alpha: 0
+		});
+
+		banner.addEffectLayer("vecnaAbsorbSigil", this.drawAbsorbSigil(banner), {
+			parent: "bodyGroup",
+			alpha: 0
+		});
+	}
+
+	onHold(banner) {
+		const pulse = (Math.sin((banner.elapsed / 1000) * 4.2) + 1) * 0.5;
+
+		const veil = banner.getEffectLayer("vecnaRuneVeil");
+		const marks = banner.getEffectLayer("vecnaRuneMarks");
+		const orbit = banner.getEffectLayer("vecnaRuneOrbit");
+		const sigil = banner.getEffectLayer("vecnaAbsorbSigil");
+
+		if (veil) {
+			veil.alpha = 0.10 + pulse * 0.06;
+		}
+
+		if (marks) {
+			marks.alpha = 0.06 + pulse * 0.08;
+		}
+
+		if (orbit) {
+			orbit.alpha = 0.58 + pulse * 0.18;
+			orbit.rotation = Math.sin((banner.elapsed / 1000) * 0.7) * 0.03;
+			this.updateRuneOrbits(orbit, banner.elapsed, "hold", 1);
+		}
+
+		if (sigil) {
+			sigil.alpha = 0.06 + pulse * 0.08;
+			sigil.rotation = -(banner.elapsed / 1000) * 0.42;
+			const ss = 0.94 + pulse * 0.04;
+			sigil.scale.set(ss);
+		}
+
+		banner.motion.tint = CriticalRubanUtils.mixHex(0xffffff, this.constructor.vars.purple, 0.06 + pulse * 0.08);
+		banner.innerGlow.alpha = 0.42 + pulse * 0.08;
+
+		if (Math.random() < 0.16) this.spawnRuneSpark(banner, 1);
+		if (Math.random() < 0.12) this.spawnAbsorbSmoke(banner, 1);
+	}
+
+	onPrepareExit(banner) {
+		banner.resetVisualState();
+		banner.bodyGroup.visible = true;
+		banner.bodyGroup.alpha = 1;
+
+		const veil = banner.getEffectLayer("vecnaRuneVeil");
+		const marks = banner.getEffectLayer("vecnaRuneMarks");
+		const orbit = banner.getEffectLayer("vecnaRuneOrbit");
+		const sigil = banner.getEffectLayer("vecnaAbsorbSigil");
+
+		if (veil) veil.alpha = 0.14;
+		if (marks) marks.alpha = 0.16;
+		if (orbit) {
+			orbit.alpha = 0.82;
+			this.updateRuneOrbits(orbit, banner.elapsed, "prepare", 1);
+		}
+		if (sigil) sigil.alpha = 0.16;
+
+		this.spawnRuneSpark(banner, 10);
+		this.spawnAbsorbSmoke(banner, 5);
+	}
+
+	onExit(banner, t) {
+		const gatherT = CriticalRubanUtils.clamp01(t / 0.45);
+		const absorbT = CriticalRubanUtils.clamp01((t - 0.45) / 0.55);
+
+		const veil = banner.getEffectLayer("vecnaRuneVeil");
+		const marks = banner.getEffectLayer("vecnaRuneMarks");
+		const orbit = banner.getEffectLayer("vecnaRuneOrbit");
+		const sigil = banner.getEffectLayer("vecnaAbsorbSigil");
+
+		if (t <= 0.45) {
+			const e = CriticalRubanUtils.easeOutCubic(gatherT);
+
+			banner.root.alpha = 1;
+			banner.root.position.set(banner.baseX, banner.baseY);
+			banner.motion.scale.set(banner.baseScale * CriticalRubanUtils.lerp(1, 1.025, e));
+			banner.motion.rotation = banner.baseRotation + CriticalRubanUtils.lerp(0, -0.012, e);
+			banner.motion.tint = CriticalRubanUtils.mixHex(0xffffff, this.constructor.vars.purpleBright, 0.16 * e);
+			banner.innerGlow.alpha = CriticalRubanUtils.lerp(0.42, 0.18, e);
+			banner.bodyGroup.alpha = CriticalRubanUtils.lerp(1, 0.96, e);
+
+			if (veil) veil.alpha = CriticalRubanUtils.lerp(0.14, 0.22, e);
+
+			if (marks) {
+				marks.alpha = CriticalRubanUtils.lerp(0.16, 0.32, e);
+			}
+
+			if (orbit) {
+				orbit.alpha = CriticalRubanUtils.lerp(0.82, 1.0, e);
+				orbit.rotation += 0.02;
+				this.updateRuneOrbits(orbit, banner.elapsed, "absorb", CriticalRubanUtils.lerp(1, 0.48, e));
+			}
+
+			if (sigil) {
+				sigil.alpha = CriticalRubanUtils.lerp(0.16, 0.34, e);
+				sigil.rotation = -(banner.elapsed / 1000) * 1.6;
+				const ss = CriticalRubanUtils.lerp(0.94, 1.06, e);
+				sigil.scale.set(ss);
+			}
+
+			if (Math.random() < 0.28) this.spawnRuneSpark(banner, 2);
+			if (Math.random() < 0.14) this.spawnAbsorbSmoke(banner, 1);
+			return;
+		}
+
+		const e = CriticalRubanUtils.easeInCubic(absorbT);
+
+		banner.root.alpha = 1 - e;
+		banner.root.position.set(
+			banner.baseX,
+			banner.baseY + CriticalRubanUtils.lerp(0, -4, e)
+		);
+		banner.motion.scale.set(banner.baseScale * CriticalRubanUtils.lerp(1.025, 0.92, e));
+		banner.motion.rotation = banner.baseRotation + CriticalRubanUtils.lerp(-0.012, 0.02, e);
+		banner.motion.tint = CriticalRubanUtils.mixHex(this.constructor.vars.purpleBright, this.constructor.vars.inkDeep, e * 0.70);
+		banner.innerGlow.alpha = CriticalRubanUtils.lerp(0.18, 0, e);
+		banner.bodyGroup.alpha = CriticalRubanUtils.lerp(0.96, 0.0, e * 1.2);
+
+		if (veil) {
+			veil.alpha = CriticalRubanUtils.lerp(0.22, 0.06, e);
+		}
+
+		if (marks) {
+			marks.alpha = CriticalRubanUtils.lerp(0.32, 0.0, e);
+		}
+
+		if (orbit) {
+			orbit.alpha = CriticalRubanUtils.lerp(1.0, 0.0, e * 1.15);
+			orbit.rotation += 0.06;
+			this.updateRuneOrbits(orbit, banner.elapsed, "absorb", CriticalRubanUtils.lerp(0.48, 0.04, e));
+		}
+
+		if (sigil) {
+			sigil.alpha = CriticalRubanUtils.lerp(0.34, 0.0, e);
+			sigil.rotation = -(banner.elapsed / 1000) * 3.2;
+			const ss = CriticalRubanUtils.lerp(1.06, 0.38, e);
+			sigil.scale.set(ss);
+		}
+
+		if (Math.random() < 0.38) this.spawnRuneSpark(banner, 2);
+		if (Math.random() < 0.26) this.spawnAbsorbSmoke(banner, 2);
+	}
+
+	onDestroy(banner) {
+		banner.motion.tint = 0xffffff;
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+  makeBannerBodyPath(banner, inset = 0) {
     const x = -banner.mainWidth / 2 + inset;
     const y = -banner.height / 2 + inset;
     const w = banner.mainWidth - inset * 2;
@@ -21,7 +206,7 @@
     return { x, y, w, h, topInset, sideBulge, lowerDip };
   }
 
-  function drawBodyShape(g, banner, {
+  drawBodyShape(g, banner, {
     inset = 0,
     fill = null,
     fillAlpha = 1,
@@ -29,7 +214,7 @@
     lineColor = 0x000000,
     lineAlpha = 1
   } = {}) {
-    const { x, y, w, h, topInset, sideBulge, lowerDip } = makeBannerBodyPath(banner, inset);
+    const { x, y, w, h, topInset, sideBulge, lowerDip } = this.makeBannerBodyPath(banner, inset);
 
     if (lineWidth > 0) g.lineStyle(lineWidth, lineColor, lineAlpha);
     if (fill !== null) g.beginFill(fill, fillAlpha);
@@ -59,7 +244,7 @@
     return g;
   }
 
-  function drawTailShape(g, banner, isLeft, {
+  drawTailShape(g, banner, isLeft, {
     inset = 0,
     fill = null,
     fillAlpha = 1,
@@ -98,7 +283,7 @@
     return g;
   }
 
-  function runeSegmentsForKind(kind, size) {
+  runeSegmentsForKind(kind, size) {
     const s = size;
     switch (kind % 8) {
       case 0:
@@ -157,14 +342,14 @@
     }
   }
 
-  function drawPartialSegments(g, segments, width, color, alpha, reveal = 1) {
+  drawPartialSegments(g, segments, width, color, alpha, reveal = 1) {
     if (reveal <= 0) return g;
     const total = segments.length;
     const scaled = Math.max(0, Math.min(1, reveal)) * total;
     const fullCount = Math.floor(scaled);
     const partial = scaled - fullCount;
 
-    gLineStyle(g, width, color, alpha);
+    CriticalRubanUtils.gLineStyle(g, width, color, alpha);
 
     for (let i = 0; i < fullCount; i++) {
       const seg = segments[i];
@@ -188,7 +373,7 @@
     return g;
   }
 
-  function redrawRuneSymbol(rune, reveal = 1, alphaMul = 1) {
+  redrawRuneSymbol(rune, reveal = 1, alphaMul = 1) {
     const data = rune._runeData;
     if (!data) return;
 
@@ -198,16 +383,16 @@
     ring.clear();
     core.clear();
 
-    drawPartialSegments(
+    this.drawPartialSegments(
       glow,
       segments,
       Math.max(4, size * 0.30),
-      VECNA.purpleBright,
+      this.constructor.vars.purpleBright,
       alpha * 0.22 * alphaMul,
       reveal
     );
 
-    drawPartialSegments(
+    this.drawPartialSegments(
       core,
       segments,
       Math.max(2.6, size * 0.16),
@@ -218,20 +403,20 @@
 
     const ringReveal = Math.max(0, (reveal - 0.22) / 0.78);
     if (ringReveal > 0) {
-      gLineStyle(ring, 1.8, VECNA.purpleBright, alpha * 0.24 * ringReveal * alphaMul);
+      CriticalRubanUtils.gLineStyle(ring, 1.8, this.constructor.vars.purpleBright, alpha * 0.24 * ringReveal * alphaMul);
       ring.drawCircle(0, 0, size * data.ringScale);
     }
   }
 
-  function createRuneSymbol(size = 22, color = VECNA.pale, alpha = 0.78, progressive = false) {
+  createRuneSymbol(size = 22, color = this.constructor.vars.pale, alpha = 0.78, progressive = false) {
     const c = new PIXI.Container();
 
     const glow = new PIXI.Graphics();
     const ring = new PIXI.Graphics();
     const core = new PIXI.Graphics();
 
-    const kind = Math.floor(randomBetween(0, 8));
-    const segments = runeSegmentsForKind(kind, size);
+    const kind = Math.floor(CriticalRubanUtils.randomBetween(0, 8));
+    const segments = this.runeSegmentsForKind(kind, size);
 
     c._runeData = {
       glow,
@@ -241,22 +426,22 @@
       color,
       alpha,
       segments,
-      ringScale: randomBetween(1.2, 1.6),
+      ringScale:CriticalRubanUtils.randomBetween(1.2, 1.6),
       progressive,
-      reveal: progressive ? randomBetween(0.0, 0.25) : 1,
-      revealSpeed: progressive ? randomBetween(0.45, 1.05) : 0,
-      revealDelay: progressive ? randomBetween(0.0, 0.9) : 0,
-      revealPhase: randomBetween(0, Math.PI * 2)
+      reveal: progressive ?CriticalRubanUtils.randomBetween(0.0, 0.25) : 1,
+      revealSpeed: progressive ?CriticalRubanUtils.randomBetween(0.45, 1.05) : 0,
+      revealDelay: progressive ?CriticalRubanUtils.randomBetween(0.0, 0.9) : 0,
+      revealPhase:CriticalRubanUtils.randomBetween(0, Math.PI * 2)
     };
 
     c.addChild(glow, ring, core);
-    c.scale.set(randomBetween(1.10, 1.35));
+    c.scale.set(CriticalRubanUtils.randomBetween(1.10, 1.35));
 
-    redrawRuneSymbol(c, c._runeData.reveal, 1);
+    this.redrawRuneSymbol(c, c._runeData.reveal, 1);
     return c;
   }
 
-  function buildRuneOrbitLayer(banner) {
+  buildRuneOrbitLayer(banner) {
     const c = new PIXI.Container();
     c._runes = [];
 
@@ -264,27 +449,27 @@
     for (let i = 0; i < count; i++) {
       const progressive = i % 3 === 0 || i % 5 === 0;
 
-      const rune = createRuneSymbol(
-        randomBetween(16, 28),
-        i % 3 === 0 ? VECNA.pale : VECNA.purpleBright,
+      const rune = this.createRuneSymbol(
+       CriticalRubanUtils.randomBetween(16, 28),
+        i % 3 === 0 ? this.constructor.vars.pale : this.constructor.vars.purpleBright,
         i % 3 === 0 ? 0.90 : 0.75,
         progressive
       );
 
-      const angle = (i / count) * Math.PI * 2 + randomBetween(-0.14, 0.14);
-      const radiusX = randomBetween(banner.mainWidth * 0.42, banner.mainWidth * 0.72);
-      const radiusY = randomBetween(banner.height * 0.90, banner.height * 1.60);
+      const angle = (i / count) * Math.PI * 2 +CriticalRubanUtils.randomBetween(-0.14, 0.14);
+      const radiusX =CriticalRubanUtils.randomBetween(banner.mainWidth * 0.42, banner.mainWidth * 0.72);
+      const radiusY =CriticalRubanUtils.randomBetween(banner.height * 0.90, banner.height * 1.60);
 
       rune._orbit = {
         angle,
         radiusX,
         radiusY,
-        speed: randomBetween(0.16, 0.38) * (Math.random() < 0.5 ? -1 : 1),
-        wobble: randomBetween(0.02, 0.08),
-        wobbleSpeed: randomBetween(1.2, 2.8),
-        pulsePhase: randomBetween(0, Math.PI * 2),
-        pulseSpeed: randomBetween(1.8, 3.4),
-        drift: randomBetween(2, 7)
+        speed:CriticalRubanUtils.randomBetween(0.16, 0.38) * (Math.random() < 0.5 ? -1 : 1),
+        wobble:CriticalRubanUtils.randomBetween(0.02, 0.08),
+        wobbleSpeed:CriticalRubanUtils.randomBetween(1.2, 2.8),
+        pulsePhase:CriticalRubanUtils.randomBetween(0, Math.PI * 2),
+        pulseSpeed:CriticalRubanUtils.randomBetween(1.8, 3.4),
+        drift:CriticalRubanUtils.randomBetween(2, 7)
       };
 
       c._runes.push(rune);
@@ -294,37 +479,37 @@
     return c;
   }
 
-  function drawRuneVeil(banner) {
+  drawRuneVeil(banner) {
     const c = new PIXI.Container();
 
     const bodyBack = new PIXI.Graphics();
-    drawBodyShape(bodyBack, banner, {
+    this.drawBodyShape(bodyBack, banner, {
       inset: -8,
-      fill: VECNA.inkDeep,
+      fill: this.constructor.vars.inkDeep,
       fillAlpha: 0.26
     });
 
     const bodyCore = new PIXI.Graphics();
-    drawBodyShape(bodyCore, banner, {
+    this.drawBodyShape(bodyCore, banner, {
       inset: 2,
-      fill: VECNA.ink,
+      fill: this.constructor.vars.ink,
       fillAlpha: 0.18,
       lineWidth: 2,
-      lineColor: VECNA.purpleBright,
+      lineColor: this.constructor.vars.purpleBright,
       lineAlpha: 0.10
     });
 
     const left = new PIXI.Graphics();
-    drawTailShape(left, banner, true, {
+    this.drawTailShape(left, banner, true, {
       inset: -6,
-      fill: VECNA.inkDeep,
+      fill: this.constructor.vars.inkDeep,
       fillAlpha: 0.20
     });
 
     const right = new PIXI.Graphics();
-    drawTailShape(right, banner, false, {
+    this.drawTailShape(right, banner, false, {
       inset: -6,
-      fill: VECNA.inkDeep,
+      fill: this.constructor.vars.inkDeep,
       fillAlpha: 0.20
     });
 
@@ -335,20 +520,20 @@
     return c;
   }
 
-  function drawAbsorbSigil(banner) {
+  drawAbsorbSigil(banner) {
     const c = new PIXI.Container();
 
     const ring1 = new PIXI.Graphics();
     const ring2 = new PIXI.Graphics();
     const star = new PIXI.Graphics();
 
-    gLineStyle(ring1, 2, VECNA.purpleBright, 0.28);
+    CriticalRubanUtils.gLineStyle(ring1, 2, this.constructor.vars.purpleBright, 0.28);
     ring1.drawCircle(0, 0, banner.height * 0.70);
 
-    gLineStyle(ring2, 1.5, VECNA.pale, 0.20);
+    CriticalRubanUtils.gLineStyle(ring2, 1.5, this.constructor.vars.pale, 0.20);
     ring2.drawCircle(0, 0, banner.height * 1.02);
 
-    gStar(
+    CriticalRubanUtils.gStar(
       star,
       0,
       0,
@@ -358,7 +543,7 @@
       null,
       1,
       2,
-      VECNA.magenta,
+      this.constructor.vars.magenta,
       0.14
     );
 
@@ -366,9 +551,9 @@
     return c;
   }
 
-  function drawInnerMarkings(banner) {
+  drawInnerMarkings(banner) {
     const g = new PIXI.Graphics();
-    gLineStyle(g, 2, VECNA.pale, 0.18);
+    CriticalRubanUtils.gLineStyle(g, 2, this.constructor.vars.pale, 0.18);
 
     const x0 = -banner.mainWidth / 2 + 28;
     const x1 = banner.mainWidth / 2 - 28;
@@ -388,47 +573,47 @@
     return g;
   }
 
-  function spawnRuneSpark(banner, count = 1) {
+  spawnRuneSpark(banner, count = 1) {
     for (let i = 0; i < count; i++) {
       banner.spawnParticle({
         parent: "fx",
         shape: "circle",
-        x: randomBetween(-banner.mainWidth * 0.54, banner.mainWidth * 0.54),
-        y: randomBetween(-banner.height * 0.42, banner.height * 0.34),
-        radius: randomBetween(1.8, 3.8),
-        color: Math.random() < 0.7 ? VECNA.purpleBright : VECNA.pale,
-        alpha: randomBetween(0.42, 0.82),
-        vx: randomBetween(-34, 34),
-        vy: randomBetween(-54, -14),
-        vr: randomBetween(-0.04, 0.04),
-        life: randomBetween(360, 760),
+        x:CriticalRubanUtils.randomBetween(-banner.mainWidth * 0.54, banner.mainWidth * 0.54),
+        y:CriticalRubanUtils.randomBetween(-banner.height * 0.42, banner.height * 0.34),
+        radius:CriticalRubanUtils.randomBetween(1.8, 3.8),
+        color: Math.random() < 0.7 ? this.constructor.vars.purpleBright : this.constructor.vars.pale,
+        alpha:CriticalRubanUtils.randomBetween(0.42, 0.82),
+        vx:CriticalRubanUtils.randomBetween(-34, 34),
+        vy:CriticalRubanUtils.randomBetween(-54, -14),
+        vr:CriticalRubanUtils.randomBetween(-0.04, 0.04),
+        life:CriticalRubanUtils.randomBetween(360, 760),
         scaleFrom: 1,
         scaleTo: 0.18
       });
     }
   }
 
-  function spawnAbsorbSmoke(banner, count = 2) {
+  spawnAbsorbSmoke(banner, count = 2) {
     for (let i = 0; i < count; i++) {
       banner.spawnParticle({
         parent: "fx",
         shape: "circle",
-        x: randomBetween(-banner.mainWidth * 0.34, banner.mainWidth * 0.34),
-        y: randomBetween(-banner.height * 0.28, banner.height * 0.24),
-        radius: randomBetween(5, 10),
-        color: Math.random() < 0.8 ? VECNA.inkDeep : VECNA.purple,
-        alpha: randomBetween(0.10, 0.22),
-        vx: randomBetween(-16, 16),
-        vy: randomBetween(-18, 8),
-        vr: randomBetween(-0.03, 0.03),
-        life: randomBetween(540, 980),
-        scaleFrom: randomBetween(0.8, 1.0),
-        scaleTo: randomBetween(1.18, 1.54)
+        x:CriticalRubanUtils.randomBetween(-banner.mainWidth * 0.34, banner.mainWidth * 0.34),
+        y:CriticalRubanUtils.randomBetween(-banner.height * 0.28, banner.height * 0.24),
+        radius:CriticalRubanUtils.randomBetween(5, 10),
+        color: Math.random() < 0.8 ? this.constructor.vars.inkDeep : this.constructor.vars.purple,
+        alpha:CriticalRubanUtils.randomBetween(0.10, 0.22),
+        vx:CriticalRubanUtils.randomBetween(-16, 16),
+        vy:CriticalRubanUtils.randomBetween(-18, 8),
+        vr:CriticalRubanUtils.randomBetween(-0.03, 0.03),
+        life:CriticalRubanUtils.randomBetween(540, 980),
+        scaleFrom:CriticalRubanUtils.randomBetween(0.8, 1.0),
+        scaleTo:CriticalRubanUtils.randomBetween(1.18, 1.54)
       });
     }
   }
 
-  function updateRuneReveal(rune, elapsedMS, phase = "hold", absorbIntensity = 1) {
+  updateRuneReveal(rune, elapsedMS, phase = "hold", absorbIntensity = 1) {
     const d = rune?._runeData;
     if (!d) return;
 
@@ -451,10 +636,10 @@
     }
 
     d.reveal = Math.min(1, reveal);
-    redrawRuneSymbol(rune, d.reveal, 1);
+    this.redrawRuneSymbol(rune, d.reveal, 1);
   }
 
-  function updateRuneOrbits(layer, elapsedMS, phase = "hold", intensity = 1) {
+  updateRuneOrbits(layer, elapsedMS, phase = "hold", intensity = 1) {
     if (!layer?._runes?.length) return;
     const t = elapsedMS / 1000;
 
@@ -489,180 +674,7 @@
         rune.scale.set(s * (0.84 + intensity * 0.34));
       }
 
-      updateRuneReveal(rune, elapsedMS, phase, intensity);
+      this.updateRuneReveal(rune, elapsedMS, phase, intensity);
     }
   }
-
-  globalThis.CriticalRubanEffects.registerRubanEffect({
-    id: EFFECT_ID,
-    types: ["critical"],
-    startDelay: 3000,
-    totalDuration: 1250,
-
-    setup(banner) {
-      banner.addEffectLayer("vecnaRuneVeil", drawRuneVeil(banner), {
-        parent: "bodyGroup",
-        alpha: 0
-      });
-
-      banner.addEffectLayer("vecnaRuneMarks", drawInnerMarkings(banner), {
-        parent: "bodyGroup",
-        alpha: 0
-      });
-
-      banner.addEffectLayer("vecnaRuneOrbit", buildRuneOrbitLayer(banner), {
-        parent: "fx",
-        alpha: 0
-      });
-
-      banner.addEffectLayer("vecnaAbsorbSigil", drawAbsorbSigil(banner), {
-        parent: "bodyGroup",
-        alpha: 0
-      });
-    },
-
-    onHold(banner) {
-      const pulse = (Math.sin((banner.elapsed / 1000) * 4.2) + 1) * 0.5;
-
-      const veil = banner.getEffectLayer("vecnaRuneVeil");
-      const marks = banner.getEffectLayer("vecnaRuneMarks");
-      const orbit = banner.getEffectLayer("vecnaRuneOrbit");
-      const sigil = banner.getEffectLayer("vecnaAbsorbSigil");
-
-      if (veil) {
-        veil.alpha = 0.10 + pulse * 0.06;
-      }
-
-      if (marks) {
-        marks.alpha = 0.06 + pulse * 0.08;
-      }
-
-      if (orbit) {
-        orbit.alpha = 0.58 + pulse * 0.18;
-        orbit.rotation = Math.sin((banner.elapsed / 1000) * 0.7) * 0.03;
-        updateRuneOrbits(orbit, banner.elapsed, "hold", 1);
-      }
-
-      if (sigil) {
-        sigil.alpha = 0.06 + pulse * 0.08;
-        sigil.rotation = -(banner.elapsed / 1000) * 0.42;
-        const ss = 0.94 + pulse * 0.04;
-        sigil.scale.set(ss);
-      }
-
-      banner.motion.tint = mixHex(0xffffff, VECNA.purple, 0.06 + pulse * 0.08);
-      banner.innerGlow.alpha = 0.42 + pulse * 0.08;
-
-      if (Math.random() < 0.16) spawnRuneSpark(banner, 1);
-      if (Math.random() < 0.12) spawnAbsorbSmoke(banner, 1);
-    },
-
-    onPrepareExit(banner) {
-      banner.resetVisualState();
-      banner.bodyGroup.visible = true;
-      banner.bodyGroup.alpha = 1;
-
-      const veil = banner.getEffectLayer("vecnaRuneVeil");
-      const marks = banner.getEffectLayer("vecnaRuneMarks");
-      const orbit = banner.getEffectLayer("vecnaRuneOrbit");
-      const sigil = banner.getEffectLayer("vecnaAbsorbSigil");
-
-      if (veil) veil.alpha = 0.14;
-      if (marks) marks.alpha = 0.16;
-      if (orbit) {
-        orbit.alpha = 0.82;
-        updateRuneOrbits(orbit, banner.elapsed, "prepare", 1);
-      }
-      if (sigil) sigil.alpha = 0.16;
-
-      spawnRuneSpark(banner, 10);
-      spawnAbsorbSmoke(banner, 5);
-    },
-
-    onExit(banner, t) {
-      const gatherT = clamp01(t / 0.45);
-      const absorbT = clamp01((t - 0.45) / 0.55);
-
-      const veil = banner.getEffectLayer("vecnaRuneVeil");
-      const marks = banner.getEffectLayer("vecnaRuneMarks");
-      const orbit = banner.getEffectLayer("vecnaRuneOrbit");
-      const sigil = banner.getEffectLayer("vecnaAbsorbSigil");
-
-      if (t <= 0.45) {
-        const e = easeOutCubic(gatherT);
-
-        banner.root.alpha = 1;
-        banner.root.position.set(banner.baseX, banner.baseY);
-        banner.motion.scale.set(banner.baseScale * lerp(1, 1.025, e));
-        banner.motion.rotation = banner.baseRotation + lerp(0, -0.012, e);
-        banner.motion.tint = mixHex(0xffffff, VECNA.purpleBright, 0.16 * e);
-        banner.innerGlow.alpha = lerp(0.42, 0.18, e);
-        banner.bodyGroup.alpha = lerp(1, 0.96, e);
-
-        if (veil) veil.alpha = lerp(0.14, 0.22, e);
-
-        if (marks) {
-          marks.alpha = lerp(0.16, 0.32, e);
-        }
-
-        if (orbit) {
-          orbit.alpha = lerp(0.82, 1.0, e);
-          orbit.rotation += 0.02;
-          updateRuneOrbits(orbit, banner.elapsed, "absorb", lerp(1, 0.48, e));
-        }
-
-        if (sigil) {
-          sigil.alpha = lerp(0.16, 0.34, e);
-          sigil.rotation = -(banner.elapsed / 1000) * 1.6;
-          const ss = lerp(0.94, 1.06, e);
-          sigil.scale.set(ss);
-        }
-
-        if (Math.random() < 0.28) spawnRuneSpark(banner, 2);
-        if (Math.random() < 0.14) spawnAbsorbSmoke(banner, 1);
-        return;
-      }
-
-      const e = easeInCubic(absorbT);
-
-      banner.root.alpha = 1 - e;
-      banner.root.position.set(
-        banner.baseX,
-        banner.baseY + lerp(0, -4, e)
-      );
-      banner.motion.scale.set(banner.baseScale * lerp(1.025, 0.92, e));
-      banner.motion.rotation = banner.baseRotation + lerp(-0.012, 0.02, e);
-      banner.motion.tint = mixHex(VECNA.purpleBright, VECNA.inkDeep, e * 0.70);
-      banner.innerGlow.alpha = lerp(0.18, 0, e);
-      banner.bodyGroup.alpha = lerp(0.96, 0.0, e * 1.2);
-
-      if (veil) {
-        veil.alpha = lerp(0.22, 0.06, e);
-      }
-
-      if (marks) {
-        marks.alpha = lerp(0.32, 0.0, e);
-      }
-
-      if (orbit) {
-        orbit.alpha = lerp(1.0, 0.0, e * 1.15);
-        orbit.rotation += 0.06;
-        updateRuneOrbits(orbit, banner.elapsed, "absorb", lerp(0.48, 0.04, e));
-      }
-
-      if (sigil) {
-        sigil.alpha = lerp(0.34, 0.0, e);
-        sigil.rotation = -(banner.elapsed / 1000) * 3.2;
-        const ss = lerp(1.06, 0.38, e);
-        sigil.scale.set(ss);
-      }
-
-      if (Math.random() < 0.38) spawnRuneSpark(banner, 2);
-      if (Math.random() < 0.26) spawnAbsorbSmoke(banner, 2);
-    },
-
-    onDestroy(banner) {
-      banner.motion.tint = 0xffffff;
-    }
-  });
-})();
+}

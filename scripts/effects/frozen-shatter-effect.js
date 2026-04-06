@@ -1,14 +1,21 @@
-(() => {
-  const EFFECT_ID = "frozenShatter";
+import { BaseRubanEffect } from "./base-effect.js";
+import { CriticalRubanUtils } from "../critical-ruban-utils.js";
 
-  function drawFrostLines(banner) {
+
+export class FrozenShatterEffectLegacy extends BaseRubanEffect {
+  static effectId = "frozenShatter";
+  static effectTypes = ["fumble"];
+  static startDelay = 3000;
+  static totalDuration = 1350;
+
+  drawFrostLines(banner) {
     const g = new PIXI.Graphics();
     const x0 = -banner.mainWidth / 2 + 18;
     const x1 = banner.mainWidth / 2 - 18;
     const y0 = -banner.height / 2 + 16;
     const y1 = banner.height / 2 - 16;
 
-    gLineStyle(g, 2, COLORS.iceBright, 0.55);
+    CriticalRubanUtils.gLineStyle(g, 2, CriticalRubanUtils.COLORS.iceBright, 0.55);
     g.moveTo(x0 + 28, 0);
     g.lineTo(x0 + 85, -18);
     g.lineTo(x0 + 132, 6);
@@ -21,10 +28,10 @@
     return g;
   }
 
-  function drawFreezeOverlay(banner) {
+  drawFreezeOverlay(banner) {
     const g = new PIXI.Container();
 
-    const frostColor = mixHex(COLORS.ice, 0x1e3a5f, 0.80);
+    const frostColor = CriticalRubanUtils.mixHex(CriticalRubanUtils.COLORS.ice, 0x1e3a5f, 0.80);
     const deepFrost = 0x1E3A5F;
 
     const x = -banner.mainWidth / 2;
@@ -77,7 +84,7 @@
     bodyFrost.endFill();
 
     const gloss = new PIXI.Graphics();
-    gloss.beginFill(COLORS.white, 0.14);
+    gloss.beginFill(CriticalRubanUtils.COLORS.white, 0.14);
     gloss.moveTo(x + 24, y + 10);
     gloss.bezierCurveTo(
       x + w * 0.28, y + 4,
@@ -144,7 +151,7 @@
       tailFrost.endFill();
 
       const tailShine = new PIXI.Graphics();
-      tailShine.beginFill(COLORS.white, 0.09);
+      tailShine.beginFill(CriticalRubanUtils.COLORS.white, 0.09);
       tailShine.moveTo(sign * 8, -halfH + 10);
       tailShine.bezierCurveTo(
         sign * 24, -halfH + 4,
@@ -168,9 +175,9 @@
     return g;
   }
 
-  function drawCrackLines(banner) {
+  drawCrackLines(banner) {
     const g = new PIXI.Graphics();
-    gLineStyle(g, 2, COLORS.iceBright, 0.9);
+    CriticalRubanUtils.gLineStyle(g, 2, CriticalRubanUtils.COLORS.iceBright, 0.9);
 
     const xL = -banner.totalWidth / 2;
     const xR = banner.totalWidth / 2;
@@ -210,7 +217,7 @@
     return g;
   }
 
-  function drawShatterFlash(banner) {
+  drawShatterFlash(banner) {
     const g = new PIXI.Container();
     const body = new PIXI.Graphics();
 
@@ -221,7 +228,7 @@
     const topInset = 18;
     const sideBulge = 10;
 
-    body.beginFill(COLORS.white, 0.32);
+    body.beginFill(CriticalRubanUtils.COLORS.white, 0.32);
     body.moveTo(x + topInset, y + 2);
     body.bezierCurveTo(
       x - sideBulge + 2, y + h * 0.10,
@@ -248,7 +255,7 @@
       const halfH = th / 2;
       const tw = banner.tailWidth + 18;
 
-      t.beginFill(COLORS.white, 0.24);
+      t.beginFill(CriticalRubanUtils.COLORS.white, 0.24);
       t.moveTo(sign * 4, -halfH + 4);
       t.bezierCurveTo(
         sign * (tw * 0.18), -halfH + 1,
@@ -281,25 +288,25 @@
     return g;
   }
 
-  function spawnIceDust(banner, count = 18) {
+  spawnIceDust(banner, count = 18) {
     for (let i = 0; i < count; i++) {
       banner.spawnParticle({
         parent: "fx",
-        x: randomBetween(-banner.totalWidth * 0.45, banner.totalWidth * 0.45),
-        y: randomBetween(-banner.height * 0.38, banner.height * 0.38),
-        radius: randomBetween(1.5, 4.5),
-        color: COLORS.iceBright,
-        alpha: randomBetween(0.35, 0.9),
-        vx: randomBetween(-90, 90),
-        vy: randomBetween(-120, 20),
-        life: randomBetween(250, 650),
+        x: CriticalRubanUtils.randomBetween(-banner.totalWidth * 0.45, banner.totalWidth * 0.45),
+        y: CriticalRubanUtils.randomBetween(-banner.height * 0.38, banner.height * 0.38),
+        radius: CriticalRubanUtils.randomBetween(1.5, 4.5),
+        color: CriticalRubanUtils.COLORS.iceBright,
+        alpha: CriticalRubanUtils.randomBetween(0.35, 0.9),
+        vx: CriticalRubanUtils.randomBetween(-90, 90),
+        vy: CriticalRubanUtils.randomBetween(-120, 20),
+        life: CriticalRubanUtils.randomBetween(250, 650),
         scaleFrom: 1,
         scaleTo: 0.3
       });
     }
   }
 
-  function getShatterPolygons(banner) {
+  getShatterPolygons(banner) {
     const bodyL = -banner.mainWidth / 2;
     const totalL = -banner.totalWidth / 2;
     const totalR = banner.totalWidth / 2;
@@ -340,7 +347,7 @@
     ];
   }
 
-  function createShatterShards(banner) {
+  createShatterShards(banner) {
     const existing = banner.getEffectLayer("frozenShards");
     if (existing) return existing._shards ?? [];
 
@@ -351,7 +358,7 @@
     banner.addEffectLayer("frozenShards", shardContainer, { parent: "fx", alpha: 1, visible: true });
 
     const pieces = [];
-    const polys = getShatterPolygons(banner);
+    const polys = this.getShatterPolygons(banner);
 
     for (const pts of polys) {
       const { shard, cx } = banner.createTexturedShard(pts, snapshot.texture, snapshot.bounds);
@@ -362,10 +369,10 @@
 
       pieces.push({
         sprite: shard,
-        vx: randomBetween(12, 42) * dir * (isTail ? 1.35 : 1),
-        vy: randomBetween(15, 45),
-        gravity: randomBetween(580, 760),
-        delay: randomBetween(0, 35)
+        vx: CriticalRubanUtils.randomBetween(12, 42) * dir * (isTail ? 1.35 : 1),
+        vy: CriticalRubanUtils.randomBetween(15, 45),
+        gravity: CriticalRubanUtils.randomBetween(580, 760),
+        delay: CriticalRubanUtils.randomBetween(0, 35)
       });
     }
 
@@ -374,110 +381,103 @@
     return pieces;
   }
 
-  globalThis.CriticalRubanEffects.registerRubanEffect({
-    id: EFFECT_ID,
-    types: ["fumble"],
-    startDelay: 3000,
-    totalDuration: 1350,
+  setup(banner) {
+    banner.addEffectLayer("frostLines", this.drawFrostLines(banner), { parent: "bodyGroup", alpha: 0 });
+    banner.addEffectLayer("freezeOverlay", this.drawFreezeOverlay(banner), { parent: "bodyGroup", alpha: 0 });
+    banner.addEffectLayer("crackLines", this.drawCrackLines(banner), { parent: "bodyGroup", alpha: 0 });
+    banner.addEffectLayer("shatterFlash", this.drawShatterFlash(banner), { parent: "bodyGroup", alpha: 0 });
+  }
 
-    setup(banner) {
-      banner.addEffectLayer("frostLines", drawFrostLines(banner), { parent: "bodyGroup", alpha: 0 });
-      banner.addEffectLayer("freezeOverlay", drawFreezeOverlay(banner), { parent: "bodyGroup", alpha: 0 });
-      banner.addEffectLayer("crackLines", drawCrackLines(banner), { parent: "bodyGroup", alpha: 0 });
-      banner.addEffectLayer("shatterFlash", drawShatterFlash(banner), { parent: "bodyGroup", alpha: 0 });
-    },
+  onHold(banner, t) {
+    const frostLines = banner.getEffectLayer("frostLines");
+    if (frostLines) frostLines.alpha = 0.10 + Math.sin(t * Math.PI) * 0.06;
+  }
 
-    onHold(banner, t) {
-      const frostLines = banner.getEffectLayer("frostLines");
-      if (frostLines) frostLines.alpha = 0.10 + Math.sin(t * Math.PI) * 0.06;
-    },
+  onPrepareExit(banner) {
+    banner.resetVisualState();
+    banner.bodyGroup.visible = true;
+    banner.bodyGroup.alpha = 1;
 
-    onPrepareExit(banner) {
-      banner.resetVisualState();
-      banner.bodyGroup.visible = true;
-      banner.bodyGroup.alpha = 1;
+    const frozenShards = banner.getEffectLayer("frozenShards");
+    if (frozenShards) {
+      for (const s of frozenShards._shards ?? []) s.sprite.destroy?.();
+      if (frozenShards._snapshot) frozenShards._snapshot.destroy(true);
+      banner.removeEffectLayer("frozenShards");
+    }
 
-      const frozenShards = banner.getEffectLayer("frozenShards");
-      if (frozenShards) {
-        for (const s of frozenShards._shards ?? []) s.sprite.destroy?.();
-        if (frozenShards._snapshot) frozenShards._snapshot.destroy(true);
-        banner.removeEffectLayer("frozenShards");
-      }
+    this.spawnIceDust(banner, 12);
+  }
 
-      spawnIceDust(banner, 12);
-    },
+  onExit(banner, t, dtMS) {
+    const freezeT = CriticalRubanUtils.clamp01(t / 0.42);
+    const shatterT = CriticalRubanUtils.clamp01((t - 0.42) / 0.58);
 
-    onExit(banner, t, dtMS) {
-      const freezeT = clamp01(t / 0.42);
-      const shatterT = clamp01((t - 0.42) / 0.58);
+    const frostLines = banner.getEffectLayer("frostLines");
+    const freezeOverlay = banner.getEffectLayer("freezeOverlay");
+    const crackLines = banner.getEffectLayer("crackLines");
+    const shatterFlash = banner.getEffectLayer("shatterFlash");
 
-      const frostLines = banner.getEffectLayer("frostLines");
-      const freezeOverlay = banner.getEffectLayer("freezeOverlay");
-      const crackLines = banner.getEffectLayer("crackLines");
-      const shatterFlash = banner.getEffectLayer("shatterFlash");
+    if (t <= 0.42) {
+      const e = CriticalRubanUtils.easeOutCubic(freezeT);
+      const flashT = CriticalRubanUtils.clamp01((freezeT - 0.84) / 0.16);
 
-      if (t <= 0.42) {
-        const e = easeOutCubic(freezeT);
-        const flashT = clamp01((freezeT - 0.84) / 0.16);
+      if (shatterFlash) shatterFlash.alpha = Math.sin(flashT * Math.PI) * 0.35;
+      banner.motion.tint = CriticalRubanUtils.mixHex(0xffffff, CriticalRubanUtils.COLORS.ice, e * 0.35);
 
-        if (shatterFlash) shatterFlash.alpha = Math.sin(flashT * Math.PI) * 0.35;
-        banner.motion.tint = mixHex(0xffffff, COLORS.ice, e * 0.35);
-
-        banner.root.alpha = 1;
-        banner.root.position.set(banner.baseX, banner.baseY);
-        banner.motion.scale.set(banner.baseScale * lerp(1, 1.015, e));
-        banner.motion.rotation = banner.baseRotation;
-
-        banner.innerGlow.alpha = lerp(0.48, 0.18, e);
-        banner.bodyGroup.alpha = lerp(1, 0.7, e);
-        banner.shine.alpha = lerp(banner.shine.alpha, 0, 0.25);
-
-        if (frostLines) frostLines.alpha = lerp(0.08, 0.72, e);
-        if (freezeOverlay) freezeOverlay.alpha = lerp(0, 1.15, e);
-        if (crackLines) crackLines.alpha = lerp(0, 1.25, Math.max(0, freezeT - 0.28) / 0.72);
-
-        if (Math.random() < 0.18) spawnIceDust(banner, 1);
-        return;
-      }
-
-      let frozenShards = banner.getEffectLayer("frozenShards");
-      if (!frozenShards) {
-        createShatterShards(banner);
-        frozenShards = banner.getEffectLayer("frozenShards");
-
-        banner.bodyGroup.visible = false;
-        if (freezeOverlay) freezeOverlay.visible = false;
-        if (crackLines) crackLines.visible = false;
-        if (shatterFlash) shatterFlash.visible = false;
-
-        spawnIceDust(banner, 18);
-      }
-
-      const shards = frozenShards?._shards ?? [];
-
-      banner.root.alpha = 1 - easeInQuad(shatterT) * 0.08;
+      banner.root.alpha = 1;
       banner.root.position.set(banner.baseX, banner.baseY);
-      banner.motion.scale.set(banner.baseScale);
+      banner.motion.scale.set(banner.baseScale * CriticalRubanUtils.lerp(1, 1.015, e));
       banner.motion.rotation = banner.baseRotation;
 
-      const dt = (dtMS ?? banner.lastDtMS ?? 16.67) / 1000;
+      banner.innerGlow.alpha = CriticalRubanUtils.lerp(0.48, 0.18, e);
+      banner.bodyGroup.alpha = CriticalRubanUtils.lerp(1, 0.7, e);
+      banner.shine.alpha = CriticalRubanUtils.lerp(banner.shine.alpha, 0, 0.25);
 
-      for (const s of shards) {
-        if (s.delay > 0) {
-          s.delay -= (dtMS ?? banner.lastDtMS ?? 16.67);
-          continue;
-        }
+      if (frostLines) frostLines.alpha = CriticalRubanUtils.lerp(0.08, 0.72, e);
+      if (freezeOverlay) freezeOverlay.alpha = CriticalRubanUtils.lerp(0, 1.15, e);
+      if (crackLines) crackLines.alpha = CriticalRubanUtils.lerp(0, 1.25, Math.max(0, freezeT - 0.28) / 0.72);
 
-        s.vy += s.gravity * dt;
-        s.sprite.x += s.vx * dt;
-        s.sprite.y += s.vy * dt;
-        s.sprite.alpha = 1 - easeInQuad(shatterT);
-      }
-    },
-
-    onDestroy(banner) {
-      const frozenShards = banner.getEffectLayer("frozenShards");
-      if (frozenShards?._snapshot) frozenShards._snapshot.destroy(true);
+      if (Math.random() < 0.18) this.spawnIceDust(banner, 1);
+      return;
     }
-  });
-})();
+
+    let frozenShards = banner.getEffectLayer("frozenShards");
+    if (!frozenShards) {
+      this.createShatterShards(banner);
+      frozenShards = banner.getEffectLayer("frozenShards");
+
+      banner.bodyGroup.visible = false;
+      if (freezeOverlay) freezeOverlay.visible = false;
+      if (crackLines) crackLines.visible = false;
+      if (shatterFlash) shatterFlash.visible = false;
+
+      this.spawnIceDust(banner, 18);
+    }
+
+    const shards = frozenShards?._shards ?? [];
+
+    banner.root.alpha = 1 - CriticalRubanUtils.easeInQuad(shatterT) * 0.08;
+    banner.root.position.set(banner.baseX, banner.baseY);
+    banner.motion.scale.set(banner.baseScale);
+    banner.motion.rotation = banner.baseRotation;
+
+    const dt = (dtMS ?? banner.lastDtMS ?? 16.67) / 1000;
+
+    for (const s of shards) {
+      if (s.delay > 0) {
+        s.delay -= (dtMS ?? banner.lastDtMS ?? 16.67);
+        continue;
+      }
+
+      s.vy += s.gravity * dt;
+      s.sprite.x += s.vx * dt;
+      s.sprite.y += s.vy * dt;
+      s.sprite.alpha = 1 - CriticalRubanUtils.easeInQuad(shatterT);
+    }
+  }
+
+  onDestroy(banner) {
+    const frozenShards = banner.getEffectLayer("frozenShards");
+    if (frozenShards?._snapshot) frozenShards._snapshot.destroy(true);
+  }
+}

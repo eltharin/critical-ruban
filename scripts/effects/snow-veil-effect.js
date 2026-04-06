@@ -1,7 +1,122 @@
-(() => {
-  const EFFECT_ID = "snowVeil";
+import { BaseRubanEffect } from "./base-effect.js";
+import { CriticalRubanUtils } from "../critical-ruban-utils.js";
 
-  function makeBannerBodyPath(banner, inset = 0) {
+export class SnowVeilEffect extends BaseRubanEffect {
+  static effectId = "snowVeil";
+  static effectTypes = ["critical"];
+  static startDelay = 3000;
+  static totalDuration = 1200;
+
+  setup(banner) {
+    banner.addEffectLayer("frostLines", this.drawFrostLines(banner), {
+      parent: "bodyGroup",
+      alpha: 0
+    });
+
+    banner.addEffectLayer("freezeOverlay", this.drawFreezeOverlay(banner), {
+      parent: "bodyGroup",
+      alpha: 0
+    });
+
+    banner.addEffectLayer("freezeFlash", this.drawFreezeFlash(banner), {
+      parent: "bodyGroup",
+      alpha: 0
+    });
+  }
+
+  onHold(banner, t) {
+    const pulse = (Math.sin((banner.elapsed / 1000) * 3.0) + 1) * 0.5;
+
+    const frostLines = banner.getEffectLayer("frostLines");
+    const freezeOverlay = banner.getEffectLayer("freezeOverlay");
+    const freezeFlash = banner.getEffectLayer("freezeFlash");
+
+    if (frostLines) frostLines.alpha = 0.10 + Math.sin(t * Math.PI) * 0.06;
+    if (freezeOverlay) freezeOverlay.alpha = 0.28 + t * 0.22;
+    if (freezeFlash) freezeFlash.alpha = 0;
+
+    banner.motion.tint = CriticalRubanUtils.mixHex(0xffffff, CriticalRubanUtils.COLORS.iceBright, 0.30 + t * 0.16);
+    banner.innerGlow.alpha = 0.50 + pulse * 0.06;
+
+    if (Math.random() < 0.38) this.spawnIceDust(banner, 3);
+  }
+
+  onPrepareExit(banner) {
+    banner.resetVisualState();
+    banner.bodyGroup.visible = true;
+    banner.bodyGroup.alpha = 1;
+
+    const frostLines = banner.getEffectLayer("frostLines");
+    const freezeOverlay = banner.getEffectLayer("freezeOverlay");
+    const freezeFlash = banner.getEffectLayer("freezeFlash");
+
+    if (frostLines) frostLines.alpha = 0.14;
+    if (freezeOverlay) freezeOverlay.alpha = 0.44;
+    if (freezeFlash) freezeFlash.alpha = 0;
+
+    this.spawnIceDust(banner, 36);
+  }
+
+  onExit(banner, t) {
+    const freezeT = CriticalRubanUtils.clamp01(t / 0.38);
+    const fadeT = CriticalRubanUtils.clamp01((t - 0.38) / 0.62);
+
+    const frostLines = banner.getEffectLayer("frostLines");
+    const freezeOverlay = banner.getEffectLayer("freezeOverlay");
+    const freezeFlash = banner.getEffectLayer("freezeFlash");
+
+    if (t <= 0.38) {
+      const e = CriticalRubanUtils.easeOutCubic(freezeT);
+      const flashT = CriticalRubanUtils.clamp01((freezeT - 0.78) / 0.22);
+
+      banner.root.alpha = 1;
+      banner.root.position.set(banner.baseX, banner.baseY);
+      banner.motion.scale.set(banner.baseScale * CriticalRubanUtils.lerp(1, 1.018, e));
+      banner.motion.rotation = banner.baseRotation;
+
+      banner.motion.tint = CriticalRubanUtils.mixHex(0xffffff, CriticalRubanUtils.COLORS.ice, e * 0.42);
+      banner.innerGlow.alpha = CriticalRubanUtils.lerp(0.48, 0.24, e);
+      banner.bodyGroup.alpha = CriticalRubanUtils.lerp(1, 0.82, e);
+      banner.shine.alpha = CriticalRubanUtils.lerp(banner.shine.alpha, 0, 0.24);
+
+      if (frostLines) frostLines.alpha = CriticalRubanUtils.lerp(0.14, 0.60, e);
+      if (freezeOverlay) freezeOverlay.alpha = CriticalRubanUtils.lerp(0.44, 0.92, e);
+      if (freezeFlash) freezeFlash.alpha = Math.sin(flashT * Math.PI) * 0.34;
+
+      if (Math.random() < 0.16) this.spawnIceDust(banner, 1);
+      return;
+    }
+
+    const e = CriticalRubanUtils.easeInQuad(fadeT);
+
+    banner.root.alpha = 1 - e;
+    banner.root.position.set(
+      banner.baseX + CriticalRubanUtils.lerp(0, 28, e),
+      banner.baseY + CriticalRubanUtils.lerp(0, -10, e)
+    );
+    banner.motion.scale.set(banner.baseScale * CriticalRubanUtils.lerp(1.018, 1.05, e));
+    banner.motion.rotation = banner.baseRotation + CriticalRubanUtils.lerp(0, 0.012, e);
+
+    banner.motion.tint = CriticalRubanUtils.mixHex(CriticalRubanUtils.COLORS.ice, CriticalRubanUtils.COLORS.iceBright, fadeT * 0.18);
+    banner.innerGlow.alpha = CriticalRubanUtils.lerp(0.24, 0.0, e);
+    banner.bodyGroup.alpha = CriticalRubanUtils.lerp(0.82, 0.16, e);
+    banner.shine.alpha = CriticalRubanUtils.lerp(banner.shine.alpha, 0, 0.28);
+
+    if (frostLines) frostLines.alpha = CriticalRubanUtils.lerp(0.60, 0, e);
+    if (freezeOverlay) freezeOverlay.alpha = CriticalRubanUtils.lerp(0.92, 0.06, e);
+    if (freezeFlash) freezeFlash.alpha = 0;
+
+    if (Math.random() < (fadeT < 0.45 ? 0.40 : 0.18)) {
+      this.spawnIceDust(banner, 2);
+    }
+  }
+
+  onDestroy(banner) {
+    banner.motion.tint = 0xffffff;
+  }
+
+
+  makeBannerBodyPath(banner, inset = 0) {
     const x = -banner.mainWidth / 2 + inset;
     const y = -banner.height / 2 + inset;
     const w = banner.mainWidth - inset * 2;
@@ -12,7 +127,7 @@
     return { x, y, w, h, topInset, sideBulge, lowerDip };
   }
 
-  function drawBodyShape(g, banner, {
+  drawBodyShape(g, banner, {
     inset = 0,
     fill = null,
     fillAlpha = 1,
@@ -20,7 +135,7 @@
     lineColor = 0x000000,
     lineAlpha = 1
   } = {}) {
-    const { x, y, w, h, topInset, sideBulge, lowerDip } = makeBannerBodyPath(banner, inset);
+    const { x, y, w, h, topInset, sideBulge, lowerDip } = this.makeBannerBodyPath(banner, inset);
 
     if (lineWidth > 0) g.lineStyle(lineWidth, lineColor, lineAlpha);
     if (fill !== null) g.beginFill(fill, fillAlpha);
@@ -50,7 +165,7 @@
     return g;
   }
 
-  function drawTailShape(g, banner, isLeft, {
+  drawTailShape(g, banner, isLeft, {
     inset = 0,
     fill = null,
     fillAlpha = 1,
@@ -89,24 +204,24 @@
     return g;
   }
 
-  function drawFreezeOverlay(banner) {
+  drawFreezeOverlay(banner) {
     const c = new PIXI.Container();
-    const frostColor = mixHex(COLORS.iceBright, 0x2b4f7a, 0.70);
+    const frostColor = CriticalRubanUtils.mixHex(CriticalRubanUtils.COLORS.iceBright, 0x2b4f7a, 0.70);
     const deepFrost = 0x173250;
-    const rim = mixHex(COLORS.white, COLORS.iceBright, 0.55);
+    const rim = CriticalRubanUtils.mixHex(CriticalRubanUtils.COLORS.white, CriticalRubanUtils.COLORS.iceBright, 0.55);
 
     // Aura proche de la silhouette réelle du ruban
     const auraBody = new PIXI.Graphics();
-    drawBodyShape(auraBody, banner, {
+    this.drawBodyShape(auraBody, banner, {
       inset: -10,
-      fill: COLORS.iceBright,
+      fill: CriticalRubanUtils.COLORS.iceBright,
       fillAlpha: 0.18
     });
 
     const auraBody2 = new PIXI.Graphics();
-    drawBodyShape(auraBody2, banner, {
+    this.drawBodyShape(auraBody2, banner, {
       inset: -4,
-      fill: COLORS.white,
+      fill: CriticalRubanUtils.COLORS.white,
       fillAlpha: 0.08
     });
 
@@ -114,16 +229,16 @@
       const tail = new PIXI.Container();
 
       const outer = new PIXI.Graphics();
-      drawTailShape(outer, banner, isLeft, {
+      this.drawTailShape(outer, banner, isLeft, {
         inset: -10,
-        fill: COLORS.iceBright,
+        fill: CriticalRubanUtils.COLORS.iceBright,
         fillAlpha: 0.16
       });
 
       const inner = new PIXI.Graphics();
-      drawTailShape(inner, banner, isLeft, {
+      this.drawTailShape(inner, banner, isLeft, {
         inset: -4,
-        fill: COLORS.white,
+        fill: CriticalRubanUtils.COLORS.white,
         fillAlpha: 0.07
       });
 
@@ -138,14 +253,14 @@
     auraRight.x = banner.mainWidth / 2 + 14;
 
     const bodyBase = new PIXI.Graphics();
-    drawBodyShape(bodyBase, banner, {
+    this.drawBodyShape(bodyBase, banner, {
       inset: 2,
       fill: deepFrost,
       fillAlpha: 0.44
     });
 
     const bodyFrost = new PIXI.Graphics();
-    drawBodyShape(bodyFrost, banner, {
+    this.drawBodyShape(bodyFrost, banner, {
       inset: 2,
       fill: frostColor,
       fillAlpha: 0.52,
@@ -155,9 +270,9 @@
     });
 
     const bodyShine = new PIXI.Graphics();
-    drawBodyShape(bodyShine, banner, {
+    this.drawBodyShape(bodyShine, banner, {
       inset: 10,
-      fill: COLORS.white,
+      fill: CriticalRubanUtils.COLORS.white,
       fillAlpha: 0.16
     });
 
@@ -165,14 +280,14 @@
       const tail = new PIXI.Container();
 
       const base = new PIXI.Graphics();
-      drawTailShape(base, banner, isLeft, {
+      this.drawTailShape(base, banner, isLeft, {
         inset: 2,
         fill: deepFrost,
         fillAlpha: 0.36
       });
 
       const frost = new PIXI.Graphics();
-      drawTailShape(frost, banner, isLeft, {
+      this.drawTailShape(frost, banner, isLeft, {
         inset: 2,
         fill: frostColor,
         fillAlpha: 0.44,
@@ -182,9 +297,9 @@
       });
 
       const shine = new PIXI.Graphics();
-      drawTailShape(shine, banner, isLeft, {
+      this.drawTailShape(shine, banner, isLeft, {
         inset: 8,
-        fill: COLORS.white,
+        fill: CriticalRubanUtils.COLORS.white,
         fillAlpha: 0.10
       });
 
@@ -213,14 +328,14 @@
     return c;
   }
 
-  function drawFrostLines(banner) {
+  drawFrostLines(banner) {
     const g = new PIXI.Graphics();
     const x0 = -banner.mainWidth / 2 + 18;
     const x1 = banner.mainWidth / 2 - 18;
     const y0 = -banner.height / 2 + 16;
     const y1 = banner.height / 2 - 16;
 
-    gLineStyle(g, 2, COLORS.iceBright, 0.55);
+    CriticalRubanUtils.gLineStyle(g, 2, CriticalRubanUtils.COLORS.iceBright, 0.55);
     g.moveTo(x0 + 28, 0);
     g.lineTo(x0 + 85, -18);
     g.lineTo(x0 + 132, 6);
@@ -236,27 +351,27 @@
     return g;
   }
 
-  function drawFreezeFlash(banner) {
+  drawFreezeFlash(banner) {
     const c = new PIXI.Container();
 
     const body = new PIXI.Graphics();
-    drawBodyShape(body, banner, {
+    this.drawBodyShape(body, banner, {
       inset: 0,
-      fill: COLORS.white,
+      fill: CriticalRubanUtils.COLORS.white,
       fillAlpha: 0.56
     });
 
     const left = new PIXI.Graphics();
-    drawTailShape(left, banner, true, {
+    this.drawTailShape(left, banner, true, {
       inset: 0,
-      fill: COLORS.white,
+      fill: CriticalRubanUtils.COLORS.white,
       fillAlpha: 0.42
     });
 
     const right = new PIXI.Graphics();
-    drawTailShape(right, banner, false, {
+    this.drawTailShape(right, banner, false, {
       inset: 0,
-      fill: COLORS.white,
+      fill: CriticalRubanUtils.COLORS.white,
       fillAlpha: 0.34
     });
 
@@ -264,143 +379,86 @@
     right.x = banner.mainWidth / 2 + 14;
 
     const star = new PIXI.Graphics();
-    gStar(star, 0, 0, 4, 22, 8, COLORS.white, 0.28);
+    CriticalRubanUtils.gStar(star, 0, 0, 4, 22, 8, CriticalRubanUtils.COLORS.white, 0.28);
 
     c.addChild(body, left, right, star);
     return c;
   }
 
-  function spawnIceDust(banner, count = 8) {
+  spawnIceDust(banner, count = 8) {
     for (let i = 0; i < count; i++) {
       banner.spawnParticle({
         parent: "fx",
-        x: randomBetween(-banner.mainWidth / 2 - 10, banner.mainWidth / 2 + 10),
-        y: randomBetween(-banner.height * 0.75, banner.height * 0.20),
-        radius: randomBetween(1.4, 3.4),
-        color: Math.random() < 0.72 ? COLORS.white : COLORS.iceBright,
-        alpha: randomBetween(0.70, 1.0),
-        vx: randomBetween(-14, 14),
-        vy: randomBetween(20, 72),
-        vr: randomBetween(-0.03, 0.03),
-        life: randomBetween(900, 1700),
-        scaleFrom: randomBetween(0.9, 1.2),
+        x:CriticalRubanUtils.randomBetween(-banner.mainWidth / 2 - 10, banner.mainWidth / 2 + 10),
+        y:CriticalRubanUtils.randomBetween(-banner.height * 0.75, banner.height * 0.20),
+        radius:CriticalRubanUtils.randomBetween(1.4, 3.4),
+        color: Math.random() < 0.72 ? CriticalRubanUtils.COLORS.white : CriticalRubanUtils.COLORS.iceBright,
+        alpha:CriticalRubanUtils.randomBetween(0.70, 1.0),
+        vx:CriticalRubanUtils.randomBetween(-14, 14),
+        vy:CriticalRubanUtils.randomBetween(20, 72),
+        vr:CriticalRubanUtils.randomBetween(-0.03, 0.03),
+        life:CriticalRubanUtils.randomBetween(900, 1700),
+        scaleFrom:CriticalRubanUtils.randomBetween(0.9, 1.2),
         scaleTo: 0.10
       });
     }
   }
 
-  globalThis.CriticalRubanEffects.registerRubanEffect({
-    id: EFFECT_ID,
-    types: ["critical"],
-    startDelay: 3000,
-    totalDuration: 1200,
-
-    setup(banner) {
-      banner.addEffectLayer("frostLines", drawFrostLines(banner), {
-        parent: "bodyGroup",
-        alpha: 0
-      });
-
-      banner.addEffectLayer("freezeOverlay", drawFreezeOverlay(banner), {
-        parent: "bodyGroup",
-        alpha: 0
-      });
-
-      banner.addEffectLayer("freezeFlash", drawFreezeFlash(banner), {
-        parent: "bodyGroup",
-        alpha: 0
-      });
-    },
-
-    onHold(banner, t) {
-      const pulse = (Math.sin((banner.elapsed / 1000) * 3.0) + 1) * 0.5;
-
-      const frostLines = banner.getEffectLayer("frostLines");
-      const freezeOverlay = banner.getEffectLayer("freezeOverlay");
-      const freezeFlash = banner.getEffectLayer("freezeFlash");
-
-      if (frostLines) frostLines.alpha = 0.10 + Math.sin(t * Math.PI) * 0.06;
-      if (freezeOverlay) freezeOverlay.alpha = 0.28 + t * 0.22;
-      if (freezeFlash) freezeFlash.alpha = 0;
-
-      banner.motion.tint = mixHex(0xffffff, COLORS.iceBright, 0.30 + t * 0.16);
-      banner.innerGlow.alpha = 0.50 + pulse * 0.06;
-
-      if (Math.random() < 0.38) spawnIceDust(banner, 3);
-    },
-
-    onPrepareExit(banner) {
-      banner.resetVisualState();
-      banner.bodyGroup.visible = true;
-      banner.bodyGroup.alpha = 1;
-
-      const frostLines = banner.getEffectLayer("frostLines");
-      const freezeOverlay = banner.getEffectLayer("freezeOverlay");
-      const freezeFlash = banner.getEffectLayer("freezeFlash");
-
-      if (frostLines) frostLines.alpha = 0.14;
-      if (freezeOverlay) freezeOverlay.alpha = 0.44;
-      if (freezeFlash) freezeFlash.alpha = 0;
-
-      spawnIceDust(banner, 36);
-    },
-
-    onExit(banner, t) {
-      const freezeT = clamp01(t / 0.38);
-      const fadeT = clamp01((t - 0.38) / 0.62);
+  onExit(banner, t) {
+      const freezeT = CriticalRubanUtils.clamp01(t / 0.38);
+      const fadeT = CriticalRubanUtils.clamp01((t - 0.38) / 0.62);
 
       const frostLines = banner.getEffectLayer("frostLines");
       const freezeOverlay = banner.getEffectLayer("freezeOverlay");
       const freezeFlash = banner.getEffectLayer("freezeFlash");
 
       if (t <= 0.38) {
-        const e = easeOutCubic(freezeT);
-        const flashT = clamp01((freezeT - 0.78) / 0.22);
+        const e = CriticalRubanUtils.easeOutCubic(freezeT);
+        const flashT = CriticalRubanUtils.clamp01((freezeT - 0.78) / 0.22);
 
         banner.root.alpha = 1;
         banner.root.position.set(banner.baseX, banner.baseY);
-        banner.motion.scale.set(banner.baseScale * lerp(1, 1.018, e));
+        banner.motion.scale.set(banner.baseScale * CriticalRubanUtils.lerp(1, 1.018, e));
         banner.motion.rotation = banner.baseRotation;
 
-        banner.motion.tint = mixHex(0xffffff, COLORS.ice, e * 0.42);
-        banner.innerGlow.alpha = lerp(0.48, 0.24, e);
-        banner.bodyGroup.alpha = lerp(1, 0.82, e);
-        banner.shine.alpha = lerp(banner.shine.alpha, 0, 0.24);
+        banner.motion.tint = CriticalRubanUtils.mixHex(0xffffff, CriticalRubanUtils.COLORS.ice, e * 0.42);
+        banner.innerGlow.alpha = CriticalRubanUtils.lerp(0.48, 0.24, e);
+        banner.bodyGroup.alpha = CriticalRubanUtils.lerp(1, 0.82, e);
+        banner.shine.alpha = CriticalRubanUtils.lerp(banner.shine.alpha, 0, 0.24);
 
-        if (frostLines) frostLines.alpha = lerp(0.14, 0.60, e);
-        if (freezeOverlay) freezeOverlay.alpha = lerp(0.44, 0.92, e);
+        if (frostLines) frostLines.alpha = CriticalRubanUtils.lerp(0.14, 0.60, e);
+        if (freezeOverlay) freezeOverlay.alpha = CriticalRubanUtils.lerp(0.44, 0.92, e);
         if (freezeFlash) freezeFlash.alpha = Math.sin(flashT * Math.PI) * 0.34;
 
-        if (Math.random() < 0.16) spawnIceDust(banner, 1);
+        if (Math.random() < 0.16) this.spawnIceDust(banner, 1);
         return;
       }
 
-      const e = easeInQuad(fadeT);
+      const e = CriticalRubanUtils.easeInQuad(fadeT);
 
       banner.root.alpha = 1 - e;
       banner.root.position.set(
-        banner.baseX + lerp(0, 28, e),
-        banner.baseY + lerp(0, -10, e)
+        banner.baseX + CriticalRubanUtils.lerp(0, 28, e),
+        banner.baseY + CriticalRubanUtils.lerp(0, -10, e)
       );
-      banner.motion.scale.set(banner.baseScale * lerp(1.018, 1.05, e));
-      banner.motion.rotation = banner.baseRotation + lerp(0, 0.012, e);
+      banner.motion.scale.set(banner.baseScale * CriticalRubanUtils.lerp(1.018, 1.05, e));
+      banner.motion.rotation = banner.baseRotation + CriticalRubanUtils.lerp(0, 0.012, e);
 
-      banner.motion.tint = mixHex(COLORS.ice, COLORS.iceBright, fadeT * 0.18);
-      banner.innerGlow.alpha = lerp(0.24, 0.0, e);
-      banner.bodyGroup.alpha = lerp(0.82, 0.16, e);
-      banner.shine.alpha = lerp(banner.shine.alpha, 0, 0.28);
+      banner.motion.tint = CriticalRubanUtils.mixHex(CriticalRubanUtils.COLORS.ice, CriticalRubanUtils.COLORS.iceBright, fadeT * 0.18);
+      banner.innerGlow.alpha = CriticalRubanUtils.lerp(0.24, 0.0, e);
+      banner.bodyGroup.alpha = CriticalRubanUtils.lerp(0.82, 0.16, e);
+      banner.shine.alpha = CriticalRubanUtils.lerp(banner.shine.alpha, 0, 0.28);
 
-      if (frostLines) frostLines.alpha = lerp(0.60, 0, e);
-      if (freezeOverlay) freezeOverlay.alpha = lerp(0.92, 0.06, e);
+      if (frostLines) frostLines.alpha = CriticalRubanUtils.lerp(0.60, 0, e);
+      if (freezeOverlay) freezeOverlay.alpha = CriticalRubanUtils.lerp(0.92, 0.06, e);
       if (freezeFlash) freezeFlash.alpha = 0;
 
       if (Math.random() < (fadeT < 0.45 ? 0.40 : 0.18)) {
-        spawnIceDust(banner, 2);
+        this.spawnIceDust(banner, 2);
       }
-    },
+    }
 
-    onDestroy(banner) {
+  onDestroy(banner) {
       banner.motion.tint = 0xffffff;
     }
-  });
-})();
+}

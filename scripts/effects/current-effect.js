@@ -1,22 +1,28 @@
-(() => {
-  globalThis.CriticalRubanEffects.registerRubanEffect({
-    id: DEFAULT_EFFECT_ID,
-    types: ["critical", "fumble"],
+import { BaseRubanEffect } from "./base-effect.js";
+import { CriticalRubanUtils } from "../critical-ruban-utils.js";
+import { effectManager } from "./effect-manager.js";
 
-    setup(banner) {
-      banner.ensureCommonFxLayers();
-    },
+export class CurrentEffect extends BaseRubanEffect {
+  static effectId = CriticalRubanUtils.DEFAULT_EFFECT_ID;
+  static effectTypes = ["critical", "fumble"];
 
-    onHold(banner, t, dtMS) {},
+  setup(banner) {
+    banner.ensureCommonFxLayers();
+  }
 
-    onPrepareExit(banner) {
-      banner.resetVisualState();
-    },
+  onHold(banner, t, dtMS) {
+    // No special behavior during hold
+  }
 
-    onExit(banner, t, dtMS) {
-      banner.updateCurrentExitBase(t);
-    },
+  onPrepareExit(banner) {
+    banner.resetVisualState();
+  }
 
-    onDestroy(banner) {}
-  });
-})();
+  onExit(banner, t, dtMS) {
+    banner.updateCurrentExitBase(t);
+  }
+
+  onDestroy(banner) {
+    // No cleanup needed
+  }
+}

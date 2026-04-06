@@ -1,17 +1,17 @@
 import { CriticalRubanBaseSystem } from "./base-system.js";
 
-export class CriticalRubanSystemDnd5e extends CriticalRubanBaseSystem {
-  static systemId = "dnd5e";
+export class CriticalRubanSystemTest extends CriticalRubanBaseSystem {
+  static systemId = "beryllium";
 
   extractBannerData(message) {
+
     if (!message?.isRoll || !message?.rolls?.length) return null;
 
     const roll = message.rolls[0];
-    const d20Term = roll?.terms?.find((t) => t?.faces === 20);
-    if (!d20Term) return null;
 
-    const isCritical = roll?.isCritical === true;
-    const isFumble = roll?.isFumble === true;
+
+    const isCritical = true;
+    const isFumble = false;
 
     if (!isCritical && !isFumble) return null;
 
