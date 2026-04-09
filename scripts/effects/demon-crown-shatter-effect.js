@@ -4,9 +4,10 @@ import { CriticalRubanUtils } from "../critical-ruban-utils.js";
 export class DemonCrownShatterEffect extends BaseRubanEffect {
   static effectId = "demonCrownShatter";
   static effectTypes = ["critical"];
-  static startDelay = 3000;
-  static totalDuration = 1250;
 
+  getExitDuration(type) {
+    return 1250;
+  }
 
   drawMistBlob(g, x, y, rx, ry, color, alpha) {
     g.beginFill(color, alpha);
@@ -536,7 +537,7 @@ export class DemonCrownShatterEffect extends BaseRubanEffect {
 
     banner.text.alpha = 1;
     banner.badge.alpha = 1;
-    banner.updateCurrentExitBase(fadeT);
+    this.fadeOutAndMoveRight(banner, fadeT);
     banner.motion.tint = CriticalRubanUtils.mixHex(0xffffff, 0xf5ebff, fadeT * 0.10);
 
     if (aura) {

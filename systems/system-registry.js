@@ -77,5 +77,5 @@ export function registerNativeCriticalRubanSystems() {
   }
 
   criticalRubanSystemRegistry.register(CriticalRubanSystemDnd5e);
-  criticalRubanSystemRegistry.register(CriticalRubanSystemTest);
+  //criticalRubanSystemRegistry.register(CriticalRubanSystemTest); //-- permet de tester les bannières avec un système ultra simple (1d20 = critique, 1d10 = échec critique)
 }

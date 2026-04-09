@@ -4,9 +4,7 @@ import { CriticalRubanUtils } from "../critical-ruban-utils.js";
 export class VecnaEffect extends BaseRubanEffect {
 	static effectId = "vecnaSmoke";
 	static effectTypes = ["fumble"];
-	static startDelay = 3000;
-	static totalDuration = 1300;
-
+  
   static vars = {
     ink: 0x09060f,
     inkDeep: 0x04020a,
@@ -15,8 +13,12 @@ export class VecnaEffect extends BaseRubanEffect {
     magenta: 0xa21caf,
     pale: 0xd8c4ff
   };
+  
+  getExitDuration(type) {
+    return 1300;
+  }
 
-	setup(banner) {
+  setup(banner) {
 		banner.addEffectLayer("vecnaVeil", this.drawVecnaVeil(banner), {
 			parent: "bodyGroup",
 			alpha: 0

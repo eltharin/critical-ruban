@@ -5,9 +5,7 @@ import { CriticalRubanUtils } from "../critical-ruban-utils.js";
 export class VecnaRunesEffect extends BaseRubanEffect {
 	static effectId = "vecnaRunes";
 	static effectTypes = ["critical"];
-	static startDelay = 3000;
-	static totalDuration = 1250;
-
+	
   static vars = {
     ink: 0x09060f,
     inkDeep: 0x04020a,
@@ -16,8 +14,12 @@ export class VecnaRunesEffect extends BaseRubanEffect {
     magenta: 0xa21caf,
     pale: 0xd8c4ff
   };
+  
+  getExitDuration(type) {
+    return 1250;
+  }
 
-	setup(banner) {
+  setup(banner) {
 		banner.addEffectLayer("vecnaRuneVeil", this.drawRuneVeil(banner), {
 			parent: "bodyGroup",
 			alpha: 0

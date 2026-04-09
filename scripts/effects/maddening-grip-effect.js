@@ -5,8 +5,10 @@ import { effectManager } from "./effect-manager.js";
 export class MaddeningGripEffect extends BaseRubanEffect {
   static effectId = "maddeningGrip";
   static effectTypes = ["fumble"];
-  static startDelay = 3000;
-  static totalDuration = 1600;
+  
+  getExitDuration(type) {
+    return 1600;
+  }
 
   setup(banner) {
     banner.addEffectLayer("abyssMist", this.createMistLayer(banner), {

@@ -21,6 +21,7 @@ import {VecnaEffect} from './effects/vecna-effect.js';
 import {VecnaRunesEffect} from './effects/vecna-runes-effect.js';
 import {VoidCrystalBloomEffect} from './effects/void-crystal-bloom-effect.js';
 import {VoidCrystalEffect} from './effects/void-crystal-effect.js';
+import {MyCustomEffect} from './effects/myCustomEffect.mjs';
 
 
 class CriticalRuban {
@@ -47,6 +48,7 @@ class CriticalRuban {
     effectManager.register(VecnaRunesEffect);
     effectManager.register(VoidCrystalBloomEffect);
     effectManager.register(VoidCrystalEffect);
+    effectManager.register(MyCustomEffect);
   }
 
   static ready() {

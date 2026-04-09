@@ -10,8 +10,14 @@ export class SimpleFlashEffect extends BaseRubanEffect {
   static effectId = "simpleFlash";
   static effectTypes = ["critical", "fumble"];
   static labelKey = "critical-ruban.settings.exitEffectChoices.simpleFlash";
-  static startDelay = 2500;
-  static totalDuration = 800;
+  
+  getHoldDuration(type) {
+    return 2500;
+  }
+  
+  getExitDuration(type) {
+    return 800;
+  }
 
   setup(banner) {
     // Créer un calque de flash blanc

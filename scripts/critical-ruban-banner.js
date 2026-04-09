@@ -1,32 +1,26 @@
 import { effectManager } from "./effects/effect-manager.js";
 import { CriticalRubanUtils } from "./critical-ruban-utils.js";
 
-import { BannerManager } from "./critical-ruban-banner_manager.js";
-
-
-class CritBanner {
+export class CritBanner {
   constructor({ slotIndex, type, label, name, color, exitEffect }) {
     this.slotIndex = slotIndex;
     this.type = type;
-    this.kind = type === "fumble" ? "fumble" : "critical";
-    this.isFumble = this.kind === "fumble";
+        
     this.label = `${label} : ${name}`;
 
-    this.exitEffect = effectManager.validateForType(this.kind, exitEffect);
+    this.exitEffect = effectManager.validateForType(this.type, exitEffect);
     this.effect = effectManager.get(this.exitEffect);
 
     this.baseColorHex = CriticalRubanUtils.cssToHex(CriticalRubanUtils.normalizeHexColor(color) ?? "#8b0000");
-    this.mainColor = this.isFumble ? CriticalRubanUtils.mixHex(this.baseColorHex, CriticalRubanUtils.COLORS.red, 0.35) : this.baseColorHex;
+    this.mainColor = this.isType("fumble") ? CriticalRubanUtils.mixHex(this.baseColorHex, CriticalRubanUtils.COLORS.red, 0.35) : this.baseColorHex;
     this.darkColor = CriticalRubanUtils.darkenHex(this.mainColor, 0.28);
     this.darkerColor = CriticalRubanUtils.darkenHex(this.mainColor, 0.45);
     this.lightColor = CriticalRubanUtils.lightenHex(this.mainColor, 0.20);
-    this.accentColor = this.isFumble ? CriticalRubanUtils.COLORS.red : CriticalRubanUtils.COLORS.gold;
+    this.accentColor = this.isType("fumble") ? CriticalRubanUtils.COLORS.red : CriticalRubanUtils.COLORS.gold;
 
-    const timing = effectManager.get(this.exitEffect).getTiming();
-
-    this.enterDuration = this.isFumble ? 480 : 320;
-    this.holdDuration = timing.startDelay;
-    this.exitDuration = timing.totalDuration;
+    this.enterDuration = this.effect.getEnterDuration(type);
+    this.holdDuration = this.effect.getHoldDuration(type);
+    this.exitDuration = this.effect.getExitDuration(type);
 
     this.state = "enter";
     this.stateTime = 0;
@@ -45,7 +39,8 @@ class CritBanner {
     this.root.eventMode = "none";
     this.root.interactiveChildren = false;
     this.root.alpha = 0.01;
-        this.motion = new PIXI.Container();
+    
+    this.motion = new PIXI.Container();
     this.motion.sortableChildren = true;
     this.root.addChild(this.motion);
 
@@ -65,6 +60,10 @@ class CritBanner {
     this.effect.setup?.(this);
   }
 
+  isType(type) {
+    return this.type === type;
+  }
+
   attach(manager) {
     this.manager = manager;
   }
@@ -77,7 +76,7 @@ class CritBanner {
     const textHeight = Math.ceil(sample.height || 36);
     sample.destroy?.();
 
-    this.badgeSize = 58;
+    this.badgeSize = Math.max(84, textHeight + 34);
     this.height = Math.max(84, textHeight + 34);
     this.mainWidth = Math.min(Math.max(300, textWidth + this.badgeSize + 78), 1300);
     this.tailWidth = 54;
@@ -91,7 +90,7 @@ class CritBanner {
       fontWeight: "700",
       fill: CriticalRubanUtils.COLORS.white,
       stroke: 0x1c1308,
-      strokeThickness: this.isFumble ? 5 : 4,
+      strokeThickness: this.isType("fumble") ? 5 : 4,
       lineJoin: "round",
       letterSpacing: 0.5,
       dropShadow: true,
@@ -177,8 +176,6 @@ class CritBanner {
       this.removeEffectLayer(key, true);
     }
   }
-
-  ensureCommonFxLayers() {}
 
   resetVisualState() {
     this.root.alpha = 1;
@@ -387,7 +384,7 @@ class CritBanner {
   drawBadge() {
     const c = new PIXI.Container();
 
-    const iconPath = this.isFumble
+    const iconPath = this.isType("fumble")
       ? `modules/${CriticalRubanUtils.MODULE_ID}/assets/fumble.svg`
       : "icons/svg/d20.svg";
 
@@ -481,15 +478,15 @@ class CritBanner {
     if (!renderer) return null;
 
     const bounds = new PIXI.Rectangle(
-      -this.totalWidth / 2 - 8,
-      -this.height / 2 - 8,
-      this.totalWidth + 16,
-      this.height + 16
+      -this.bodyGroup.width/2,
+      -this.bodyGroup.height / 2,
+      this.bodyGroup.width,
+      this.bodyGroup.height
     );
 
     const rt = PIXI.RenderTexture.create({
-      width: Math.ceil(bounds.width),
-      height: Math.ceil(bounds.height),
+      width: this.bodyGroup.width+2,
+      height: this.bodyGroup.height+2,
       resolution: renderer.resolution || window.devicePixelRatio || 1
     });
 
@@ -509,7 +506,7 @@ class CritBanner {
     return { texture: rt, bounds };
   }
 
-  createTexturedShard(points, texture, sourceBounds) {
+  createTexturedShard(points, texture, sourceBounds, borderColor = null) {
     const xs = [];
     const ys = [];
 
@@ -523,14 +520,22 @@ class CritBanner {
     const minY = Math.min(...ys);
     const maxY = Math.max(...ys);
 
-    const pad = 3;
+    const pad = 0;
 
-    const frameX = Math.floor(minX - sourceBounds.x - pad);
-    const frameY = Math.floor(minY - sourceBounds.y - pad);
-    const frameW = Math.ceil(maxX - minX + pad * 2);
-    const frameH = Math.ceil(maxY - minY + pad * 2);
+    const rawFrameX = Math.floor(minX - (-this.bodyGroup.width/2) - pad);
+    const rawFrameY = Math.floor(minY - (-this.bodyGroup.height/2) - pad);
+    const rawFrameW = Math.ceil(maxX - minX + pad * 2);
+    const rawFrameH = Math.ceil(maxY - minY + pad * 2);
 
     const base = texture.baseTexture;
+    const frameX = Math.max(0, Math.min(rawFrameX, this.bodyGroup.width));
+    const frameY = Math.max(0, Math.min(rawFrameY, this.bodyGroup.height));
+    const frameW = Math.max(1, Math.min(rawFrameW - (frameX - rawFrameX), this.bodyGroup.width - frameX));
+    const frameH = Math.max(1, Math.min(rawFrameH - (frameY - rawFrameY), this.bodyGroup.height - frameY));
+
+    const shiftX = frameX - rawFrameX;
+    const shiftY = frameY - rawFrameY;
+
     const frame = new PIXI.Rectangle(frameX, frameY, frameW, frameH);
     const croppedTexture = new PIXI.Texture(base, frame);
 
@@ -538,20 +543,17 @@ class CritBanner {
     shard.x = minX - pad;
     shard.y = minY - pad;
 
-    const sprite = new PIXI.Sprite(croppedTexture);
-    sprite.x = 0;
-        sprite.y = 0;
-
     const localPts = [];
     for (let i = 0; i < points.length; i += 2) {
-      localPts.push(points[i] - shard.x, points[i + 1] - shard.y);
+      localPts.push(points[i] - shard.x - shiftX, points[i + 1] - shard.y - shiftY);
     }
+
+    const sprite = new PIXI.Sprite(croppedTexture);
+    sprite.x = 0;
+    sprite.y = 0;
 
     const mask = new PIXI.Graphics();
     CriticalRubanUtils.gPoly(mask, localPts, CriticalRubanUtils.COLORS.white, 1);
-
-    const edge = new PIXI.Graphics();
-    CriticalRubanUtils.gPoly(edge, localPts, null, 1, 1.25, CriticalRubanUtils.COLORS.iceBright, 0.65);
 
     const gloss = new PIXI.Graphics();
     const cx = xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -561,8 +563,8 @@ class CritBanner {
     for (let i = 0; i < localPts.length; i += 2) {
       const px = localPts[i];
       const py = localPts[i + 1];
-      const localCx = cx - shard.x;
-      const localCy = cy - shard.y;
+      const localCx = cx - shard.x - shiftX;
+      const localCy = cy - shard.y - shiftY;
 
       glossPts.push(
         CriticalRubanUtils.lerp(localCx, px, 0.58),
@@ -572,9 +574,9 @@ class CritBanner {
 
     CriticalRubanUtils.gPoly(gloss, glossPts, CriticalRubanUtils.COLORS.white, 0.10);
 
+    
     shard.addChild(sprite);
     shard.addChild(mask);
-    shard.addChild(edge);
     shard.addChild(gloss);
     sprite.mask = mask;
 
@@ -639,11 +641,11 @@ class CritBanner {
     }
 
     this.elapsed += dtMS;
-        this.stateTime += dtMS;
+    this.stateTime += dtMS;
     this.lastDtMS = dtMS;
 
     if (this.state === "enter") {
-      this.updateEnter();
+      this.updateEnter(dtMS);
       if (this.stateTime >= this.enterDuration) this.changeState("hold");
     } else if (this.state === "hold") {
       this.updateHold(dtMS);
@@ -666,64 +668,19 @@ class CritBanner {
     this.effect.onPrepareExit?.(this);
   }
 
-  updateEnter() {
+  updateEnter(dtMS) {
     const t = CriticalRubanUtils.clamp01(this.stateTime / this.enterDuration);
-    const e = this.isFumble ? CriticalRubanUtils.easeOutBackSoft(t) : CriticalRubanUtils.easeOutCubic(t);
-    const offsetX = CriticalRubanUtils.lerp(this.isFumble ? -145 : -120, 0, e);
-    const offsetY = CriticalRubanUtils.lerp(this.isFumble ? 6 : -8, 0, e);
-    const scale = CriticalRubanUtils.lerp(this.isFumble ? 0.88 : 0.9, 1, e);
-    const alpha = CriticalRubanUtils.lerp(0, 1, CriticalRubanUtils.easeOutCubic(t));
-    const rot = this.baseRotation + CriticalRubanUtils.lerp(this.isFumble ? -0.025 : -0.015, 0, e);
-    const shake = this.isFumble ? Math.sin(t * Math.PI * 7) * (1 - t) * 8 : 0;
-
-    this.root.position.set(this.baseX + offsetX + shake, this.baseY + offsetY);
-    this.motion.scale.set(this.baseScale * scale);
-    this.motion.rotation = rot;
-    this.root.alpha = alpha;
-    this.updateCommonFX(t, true);
+    this.effect.onEnter?.(this, t, dtMS);
   }
 
   updateHold(dtMS) {
     const t = CriticalRubanUtils.clamp01(this.stateTime / this.holdDuration);
-    const bob = Math.sin((this.elapsed / 1000) * 2.6 + this.floatSeed) * 1.2;
-    const glow = 0.48 + Math.sin((this.elapsed / 1000) * 4.8 + this.floatSeed) * 0.08;
-    const shinePulse = ((this.elapsed / 1000) + this.shineSeed) % 1.85;
-    const shineT = CriticalRubanUtils.clamp01((shinePulse - 0.15) / 0.55);
-
-    this.root.position.set(this.baseX, this.baseY + bob);
-    this.root.alpha = 1;
-    this.motion.scale.set(this.baseScale);
-    this.motion.rotation = this.baseRotation + (this.isFumble ? Math.sin((this.elapsed / 1000) * 6.2) * 0.004 : 0);
-
-    this.innerGlow.alpha = glow;
-    this.shine.alpha = shinePulse > 0.15 && shinePulse < 0.70 ? Math.sin(shineT * Math.PI) * 0.30 : 0;
-    this.shine.x = CriticalRubanUtils.lerp(-this.mainWidth * 0.7, this.mainWidth * 0.7, CriticalRubanUtils.easeInOutQuad(shineT));
-
-    this.motion.tint = 0xffffff;
     this.effect.onHold?.(this, t, dtMS);
   }
 
   updateExit(dtMS) {
     const t = CriticalRubanUtils.clamp01(this.stateTime / this.exitDuration);
     this.effect.onExit?.(this, t, dtMS);
-  }
-
-  updateCurrentExitBase(t) {
-    const e = CriticalRubanUtils.easeInCubic(t);
-    this.root.alpha = 1 - e;
-    this.root.position.set(this.baseX + CriticalRubanUtils.lerp(0, 40, e), this.baseY + CriticalRubanUtils.lerp(0, -10, e));
-    this.motion.scale.set(this.baseScale * CriticalRubanUtils.lerp(1, 1.04, e));
-    this.motion.rotation = this.baseRotation + CriticalRubanUtils.lerp(0, this.isFumble ? -0.03 : 0.02, e);
-    this.innerGlow.alpha = CriticalRubanUtils.lerp(0.5, 0.15, e);
-    this.shine.alpha = CriticalRubanUtils.lerp(this.shine.alpha, 0, 0.3);
-  }
-
-  updateCommonFX(t, entering = false) {
-    this.innerGlow.alpha = CriticalRubanUtils.lerp(0.2, 0.55, t);
-    if (entering) {
-      this.shine.alpha = Math.sin(t * Math.PI) * 0.18;
-      this.shine.x = CriticalRubanUtils.lerp(-50, 14, t);
-    }
   }
 
   updateParticles(dtMS) {
@@ -800,5 +757,3 @@ class CritBanner {
     }
   }
 }
-
-export { BannerManager, CritBanner };

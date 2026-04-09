@@ -53,8 +53,8 @@ export class BannerManager {
     CriticalRubanUtils.releaseBannerSlot(banner.slotIndex);
   }
 
-  _tick(ticker) {
-    const dtMS = typeof ticker?.deltaMS === "number" ? ticker.deltaMS : 1000 / 60;
+  _tick() {
+    const dtMS = typeof this.ticker?.deltaMS === "number" ? this.ticker.deltaMS : 1000 / 60;
 
     for (const banner of [...this.banners]) {
       try {

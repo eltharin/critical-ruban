@@ -40,7 +40,9 @@
         "voidCrystalFumble": "Cristaux du Néant",
         "voidCrystalBloom": "Floraison du Néant",
         "maddeningGrip": "Emprise démente",
-        "demonCrownShatter": "Couronne démoniaque brisée"
+        "demonCrownShatter": "Couronne démoniaque brisée",
+        "simpleFlash": "Flash simple",
+        "explosion": "Explosion"
       },
 
       "bannerScale": {

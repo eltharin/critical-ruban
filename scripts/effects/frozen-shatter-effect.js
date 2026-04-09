@@ -5,8 +5,10 @@ import { CriticalRubanUtils } from "../critical-ruban-utils.js";
 export class FrozenShatterEffectLegacy extends BaseRubanEffect {
   static effectId = "frozenShatter";
   static effectTypes = ["fumble"];
-  static startDelay = 3000;
-  static totalDuration = 1350;
+    
+  getExitDuration(type) {
+    return 1350;
+  }
 
   drawFrostLines(banner) {
     const g = new PIXI.Graphics();

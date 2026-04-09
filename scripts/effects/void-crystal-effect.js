@@ -5,9 +5,7 @@ import { CriticalRubanUtils } from "../critical-ruban-utils.js";
 export class VoidCrystalEffect extends BaseRubanEffect {
 	static effectId = "voidCrystalFumble";
 	static effectTypes = ["fumble"];
-	static startDelay = 3000;
-	static totalDuration = 1350;
-
+  
   static vars = {
     crystalDark: 0x16071f,
     crystalDeep: 0x2b0d46,
@@ -16,8 +14,12 @@ export class VoidCrystalEffect extends BaseRubanEffect {
     crystalEdge: 0xe7d7ff,
     voidTint: 0x120716
   };
+  
+  getExitDuration(type) {
+    return 1350;
+  }
 
-	setup(banner) {
+  setup(banner) {
 		banner.addEffectLayer("corruptionOverlay", this.drawCorruptionOverlay(banner), {
 			parent: "bodyGroup",
 			alpha: 0

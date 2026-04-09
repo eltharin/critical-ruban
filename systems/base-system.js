@@ -1,6 +1,10 @@
 export class CriticalRubanBaseSystem {
   static systemId = null;
 
+  static isEnabled() {
+    return this.systemId == game.settings.get(CriticalRubanUtils.MODULE_ID, "activeSystem");
+  }
+
   extractBannerData(message) {
     return null;
   }

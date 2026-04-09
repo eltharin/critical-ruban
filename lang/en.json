@@ -40,7 +40,9 @@
         "voidCrystalFumble": "Void crystals",
         "voidCrystalBloom": "Void bloom",
         "maddeningGrip": "Maddening grip",
-        "demonCrownShatter": "Shattered demon crown"
+        "demonCrownShatter": "Shattered demon crown",
+        "simpleFlash": "Simple flash",
+        "explosion": "Explosion"
       },
 
       "bannerScale": {

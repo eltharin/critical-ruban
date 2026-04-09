@@ -9,9 +9,8 @@ export class CriticalRubanSystemTest extends CriticalRubanBaseSystem {
 
     const roll = message.rolls[0];
 
-
-    const isCritical = true;
-    const isFumble = false;
+    const isCritical = roll.terms[0].faces == 20;
+    const isFumble = roll.terms[0].faces == 10;
 
     if (!isCritical && !isFumble) return null;
 

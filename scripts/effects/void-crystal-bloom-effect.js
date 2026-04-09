@@ -4,9 +4,7 @@ import { CriticalRubanUtils } from "../critical-ruban-utils.js";
 export class VoidCrystalBloomEffect extends BaseRubanEffect {
 	static effectId = "voidCrystalBloom";
 	static effectTypes = ["critical"];
-	static startDelay = 3000;
-	static totalDuration = 1250;
-
+  
   static vars = {
     bloomColor: 0x7a49ff,
     bloomDark: 0x1c1030,
@@ -17,8 +15,12 @@ export class VoidCrystalBloomEffect extends BaseRubanEffect {
     bloomWhite: 0xffffff,
     bloomCore: 0xe4d2ff
   };
-   
-	setup(banner) {
+  
+  getExitDuration(type) {
+    return 1200;
+  }
+
+  setup(banner) {
 		banner.addEffectLayer("bloomOverlay", this.drawBloomOverlay(banner), {
 			parent: "bodyGroup",
 			alpha: 0

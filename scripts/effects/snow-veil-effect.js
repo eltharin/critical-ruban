@@ -4,8 +4,10 @@ import { CriticalRubanUtils } from "../critical-ruban-utils.js";
 export class SnowVeilEffect extends BaseRubanEffect {
   static effectId = "snowVeil";
   static effectTypes = ["critical"];
-  static startDelay = 3000;
-  static totalDuration = 1200;
+  
+  getExitDuration(type) {
+    return 1200;
+  }
 
   setup(banner) {
     banner.addEffectLayer("frostLines", this.drawFrostLines(banner), {

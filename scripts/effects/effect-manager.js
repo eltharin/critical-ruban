@@ -3,7 +3,6 @@ import { BaseRubanEffect } from "./base-effect.js";
 export class EffectManager {
   constructor() {
     this.effects = new Map();
-    this.registerDefaultEffects();
   }
 
   register(effectClass) {
@@ -38,44 +37,6 @@ export class EffectManager {
   validateForType(type, requestedId) {
     const effects = this.getForType(type);
     return effects.some(effect => effect.id === requestedId) ? requestedId : "current";
-  }
-
-  registerLegacy(effectConfig) {
-    const { id, types, startDelay = 3000, totalDuration = 900, setup, onHold, onPrepareExit, onExit, onDestroy } = effectConfig;
-
-    class LegacyEffect extends BaseRubanEffect {
-      static effectId = id;
-      static effectTypes = types;
-      static startDelay = startDelay;
-      static totalDuration = totalDuration;
-
-      setup(banner) {
-        if (setup) setup(banner);
-      }
-
-      onHold(banner, t, dtMS) {
-        if (onHold) onHold(banner, t, dtMS);
-      }
-
-      onPrepareExit(banner) {
-        if (onPrepareExit) onPrepareExit(banner);
-      }
-
-      onExit(banner, t, dtMS) {
-        if (onExit) onExit(banner, t, dtMS);
-        else super.onExit(banner, t, dtMS);
-      }
-
-      onDestroy(banner) {
-        if (onDestroy) onDestroy(banner);
-      }
-    }
-
-    return this.register(LegacyEffect);
-  }
-
-  registerDefaultEffects() {
-    // Les effets par défaut seront enregistrés via les imports
   }
 }
 
